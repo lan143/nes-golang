@@ -707,10 +707,8 @@ func (h *BRKHandler) Handle(cpu *Cpu, mode enums.Modes) error {
 	cpu.logExecution("BRK", mode, 0)
 
 	cpu.P |= byte(B)
-	cpu.P |= byte(I)
 	cpu.PC++
-
-	// @todo: implement run BRK handler
+	cpu.interrupt(BRK)
 
 	return nil
 }
@@ -915,6 +913,8 @@ func (h *CPYHandle) Handle(cpu *Cpu, mode enums.Modes) error {
 	} else {
 		cpu.P &= ^byte(C)
 	}
+
+	cpu.PC++
 
 	return nil
 }

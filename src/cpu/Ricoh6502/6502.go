@@ -3,7 +3,9 @@ package Ricoh6502
 import (
 	"fmt"
 	"log"
+	"main/src/bus"
 	"main/src/mapper"
+	"sync"
 )
 
 type PFlag byte
@@ -19,6 +21,15 @@ const (
 	N = 0x80 // знак. Равен старшему биту значения, загруженного в A, X или Y в результате выполнения операции (кроме TXS).
 )
 
+type InterruptHandler uint16
+
+const (
+	NMI   InterruptHandler = 0xFFFA
+	Reset                  = 0xFFFC
+	IRQ                    = 0xFFFE
+	BRK                    = 0xFFFE
+)
+
 type Cpu struct {
 	A    byte   // аккумулятор, 8 бит;
 	X, Y byte   // индексные регистры, 8 бит;
@@ -26,14 +37,23 @@ type Cpu struct {
 	S    byte   // указатель стека, 8 бит;
 	P    byte   // регистр состояния;
 
-	mapper  mapper.Mapper
-	decoder Decoder
+	mapper           mapper.Mapper
+	decoder          Decoder
+	hasInterrupt     bool
+	interruptHandler InterruptHandler
+	interruptMX      sync.RWMutex
 }
 
-func (c *Cpu) Init(mapper mapper.Mapper) {
+func (c *Cpu) Init(mapper mapper.Mapper, b *bus.Bus) {
 	c.mapper = mapper
-
 	c.decoder.InitCommands()
+
+	b.Subscribe(bus.VBlink, func() {
+		c.interruptMX.Lock()
+		c.hasInterrupt = true
+		c.interruptHandler = NMI
+		c.interruptMX.Unlock()
+	})
 
 	c.P = 0
 	c.P |= 0x20
@@ -41,19 +61,30 @@ func (c *Cpu) Init(mapper mapper.Mapper) {
 }
 
 func (c *Cpu) Reset() {
-	address1 := c.mapper.GetByte(0xfffc)
-	address2 := c.mapper.GetByte(0xfffd)
-	c.PC = uint16(address1) | (uint16(address2))<<8
-	log.Printf("Reset handler: 0x%X", c.PC)
+	c.interruptMX.Lock()
+	c.hasInterrupt = true
+	c.interruptHandler = Reset
+	c.interruptMX.Unlock()
 }
 
 func (c *Cpu) Run() {
 	breakLoop := false
 
+	if c.PC == 0 {
+		c.Reset()
+	}
+
 	for {
 		if breakLoop {
 			break
 		}
+
+		c.interruptMX.RLock()
+		if c.hasInterrupt {
+			c.hasInterrupt = false
+			c.interrupt(c.interruptHandler)
+		}
+		c.interruptMX.RUnlock()
 
 		fmt.Printf("PC: 0x%X ", c.PC)
 		command := c.mapper.GetByte(c.PC)
@@ -121,4 +152,33 @@ func (c *Cpu) setCorrectionBit(value byte) {
 	} else {
 		c.P &= ^byte(C)
 	}
+}
+
+func (c *Cpu) interrupt(handler InterruptHandler) {
+	if handler == IRQ && c.P&I > 0 {
+		return
+	}
+
+	if handler != Reset {
+		if handler != BRK {
+			c.P &= ^byte(B)
+		}
+
+		c.P |= I
+
+		stackValue := c.PC
+
+		c.setByte(uint16(c.S)+0x100, byte((stackValue>>8)&0xff))
+		c.S--
+		c.setByte(uint16(c.S)+0x100, byte(stackValue&0xff))
+		c.S--
+		c.setByte(uint16(c.S)+0x100, c.P)
+		c.S--
+	}
+
+	address1 := c.mapper.GetByte(uint16(handler))
+	address2 := c.mapper.GetByte(uint16(handler) + 1)
+	c.PC = uint16(address1) | (uint16(address2))<<8
+
+	log.Printf("Interrupt: 0x%X. Address: 0x%X", handler, c.PC)
 }

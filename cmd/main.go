@@ -1,6 +1,7 @@
 package main
 
 import (
+	"main/src/bus"
 	"main/src/cpu/Ricoh6502"
 	"main/src/mapper"
 	"main/src/ppu"
@@ -20,15 +21,19 @@ func main() {
 		panic(err)
 	}
 
-	simpleMapper := mapper.SimpleMapper{}
+	simpleMapper := mapper.NROMMapper{}
 	simpleMapper.LoadRom(nesRom.Data)
 
-	ppuUnit := ppu.PPU{}
-	ppuUnit.Init(&simpleMapper)
+	b := &bus.Bus{}
+	b.Init()
+
+	ppuUnit := ppu.P2C02{}
+	ppuUnit.Init(&simpleMapper, b)
 	go ppuUnit.Run()
 
 	mos6502 := Ricoh6502.Cpu{}
-	mos6502.Init(&simpleMapper)
+
+	mos6502.Init(&simpleMapper, b)
 	mos6502.Reset()
 	mos6502.Run()
 }

@@ -1,10 +1,10 @@
 package mapper
 
-type SimpleMapper struct {
+type NROMMapper struct {
 	memory [0xffff]byte
 }
 
-func (m *SimpleMapper) LoadRom(data []byte) {
+func (m *NROMMapper) LoadRom(data []byte) {
 	var i, j uint16
 	j = 0
 
@@ -27,10 +27,10 @@ func (m *SimpleMapper) LoadRom(data []byte) {
 	}
 }
 
-func (m *SimpleMapper) GetByte(address uint16) byte {
+func (m *NROMMapper) GetByte(address uint16) byte {
 	return m.memory[address]
 }
 
-func (m *SimpleMapper) PutByte(address uint16, value byte) {
+func (m *NROMMapper) PutByte(address uint16, value byte) {
 	m.memory[address] = value
 }
