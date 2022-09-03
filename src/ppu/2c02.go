@@ -11,9 +11,8 @@ type P2C02 struct {
 	bus    *bus.Bus
 }
 
-func (p *P2C02) Init(mapper mapper.Mapper, bus *bus.Bus) {
+func (p *P2C02) Init(mapper mapper.Mapper) {
 	p.mapper = mapper
-	p.bus = bus
 }
 
 func (p *P2C02) Run() {
@@ -26,5 +25,11 @@ func (p *P2C02) Run() {
 			p.bus.PushEvent(bus.VBlink)
 			break
 		}
+	}
+}
+
+func NewPPU(b *bus.Bus) PPU {
+	return &P2C02{
+		bus: b,
 	}
 }

@@ -42,13 +42,15 @@ type Cpu struct {
 	hasInterrupt     bool
 	interruptHandler InterruptHandler
 	interruptMX      sync.RWMutex
+
+	b *bus.Bus
 }
 
-func (c *Cpu) Init(mapper mapper.Mapper, b *bus.Bus) {
+func (c *Cpu) Init(mapper mapper.Mapper) {
 	c.mapper = mapper
 	c.decoder.InitCommands()
 
-	b.Subscribe(bus.VBlink, func() {
+	c.b.Subscribe(bus.VBlink, func() {
 		c.interruptMX.Lock()
 		c.hasInterrupt = true
 		c.interruptHandler = NMI
@@ -181,4 +183,10 @@ func (c *Cpu) interrupt(handler InterruptHandler) {
 	c.PC = uint16(address1) | (uint16(address2))<<8
 
 	log.Printf("Interrupt: 0x%X. Address: 0x%X", handler, c.PC)
+}
+
+func NewCPU(b *bus.Bus) *Cpu {
+	return &Cpu{
+		b: b,
+	}
 }

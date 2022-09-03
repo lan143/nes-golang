@@ -25,3 +25,7 @@ func (b *Bus) PushEvent(event Event) {
 func (b *Bus) Subscribe(event Event, fn func()) {
 	b.events[event] = append(b.events[event], fn)
 }
+
+func NewBus() *Bus {
+	return &Bus{}
+}

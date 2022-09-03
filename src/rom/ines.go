@@ -1,7 +1,6 @@
 package rom
 
 import (
-	"errors"
 	"log"
 	"os"
 )
@@ -45,22 +44,16 @@ func (n *INes) Load(file *os.File) error {
 	return nil
 }
 
+func (n *INes) GetData() []byte {
+	return n.Data
+}
+
 func (n *INes) loadHeader(file *os.File) error {
 	header := make([]byte, 0x10)
 
 	_, err := file.Read(header)
 	if err != nil {
 		return err
-	}
-
-	iNESFormat := false
-
-	if rune(header[0]) == 'N' && rune(header[1]) == 'E' && rune(header[2]) == 'S' && header[3] == 0x1A {
-		iNESFormat = true
-	}
-
-	if !iNESFormat {
-		return errors.New("this is not correct NES rom")
 	}
 
 	n.prgRomSize = header[4]
