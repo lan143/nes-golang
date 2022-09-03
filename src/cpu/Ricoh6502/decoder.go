@@ -55,7 +55,6 @@ func (c *Decoder) InitCommands() {
 		{Command: 0xB9, OpcodeName: "LDA", Mode: enums.ModeABSY, Handler: &LDAHandler{}},
 		{Command: 0xA1, OpcodeName: "LDA", Mode: enums.ModeINDX, Handler: &LDAHandler{}},
 		{Command: 0xB1, OpcodeName: "LDA", Mode: enums.ModeINDY, Handler: &LDAHandler{}},
-		{Command: 0x8A, OpcodeName: "XTA", Mode: enums.ModeIMP, Handler: &XTAHandler{}},
 		{Command: 0x6A, OpcodeName: "ROR", Mode: enums.ModeAcc, Handler: &RORHandler{}},
 		{Command: 0x66, OpcodeName: "ROR", Mode: enums.ModeZP, Handler: &RORHandler{}},
 		{Command: 0x76, OpcodeName: "ROR", Mode: enums.ModeZPX, Handler: &RORHandler{}},

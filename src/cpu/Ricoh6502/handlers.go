@@ -433,18 +433,6 @@ func (h *TYAHandler) Handle(cpu *Cpu, mode enums.Modes) error {
 	return nil
 }
 
-type XTAHandler struct {
-}
-
-func (h *XTAHandler) Handle(cpu *Cpu, mode enums.Modes) error {
-	cpu.logExecution("XTA", mode, 0)
-
-	cpu.A = cpu.X
-	cpu.PC++
-
-	return nil
-}
-
 type LDXHandler struct {
 }
 
@@ -503,37 +491,25 @@ func (h *ADCHandler) Handle(cpu *Cpu, mode enums.Modes) error {
 
 	var cByte byte
 	if cpu.P&byte(C) > 0 {
-		cByte = 0x80
-	} else {
-		cByte = 0x0
-	}
-
-	src, err := cpu.loadWithMemoryAccessType(mode, operand)
-	result := (src >> 1) | cByte
-	cpu.A = result
-
-	if src&1 == 0 {
-		cpu.P &= ^byte(C)
-		cByte = 0
-	} else {
-		cpu.P |= byte(C)
 		cByte = 1
+	} else {
+		cByte = 0
 	}
 
 	src1 := cpu.A
-	src2 := result
-	result1 := uint16(src1) + uint16(src2) + uint16(cByte)
-	cpu.A = byte(result1)
+	src2, err := cpu.loadWithMemoryAccessType(mode, operand)
+	result := uint16(src1) + uint16(src2) + uint16(cByte)
+	cpu.A = byte(result)
 
 	cpu.setFlagsByValue(cpu.A)
 
-	if result1 >= 0xff {
+	if result >= 0xff {
 		cpu.setCorrectionBit(1)
 	} else {
 		cpu.setCorrectionBit(0)
 	}
 
-	if !((src1^src2)&0x80 > 0) && ((src2^result)&0x80 > 0) {
+	if !((src1^src2)&0x80 > 0) && ((uint16(src2)^result)&0x80 > 0) {
 		cpu.P |= V
 	} else {
 		cpu.P &= ^byte(V)
@@ -863,6 +839,8 @@ func (h *CMPHandler) Handle(cpu *Cpu, mode enums.Modes) error {
 	} else {
 		cpu.P &= ^byte(C)
 	}
+
+	cpu.PC++
 
 	return nil
 }

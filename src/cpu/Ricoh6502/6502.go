@@ -1,6 +1,7 @@
 package Ricoh6502
 
 import (
+	"fmt"
 	"log"
 	"main/src/mapper"
 )
@@ -54,6 +55,7 @@ func (c *Cpu) Run() {
 			break
 		}
 
+		fmt.Printf("PC: 0x%X ", c.PC)
 		command := c.mapper.GetByte(c.PC)
 
 		found := false
