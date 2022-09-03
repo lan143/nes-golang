@@ -194,7 +194,6 @@ func (h *JSRHandler) Handle(cpu *Cpu, mode enums.Modes) error {
 	cpu.S--
 
 	cpu.PC = operand
-	cpu.PC++
 
 	return nil
 }
@@ -900,6 +899,8 @@ func (h *CPXHandler) Handle(cpu *Cpu, mode enums.Modes) error {
 	} else {
 		cpu.P &= ^byte(C)
 	}
+
+	cpu.PC++
 
 	return nil
 }
