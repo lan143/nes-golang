@@ -62,14 +62,20 @@ type BPLHandler struct {
 }
 
 func (h *BPLHandler) Handle(cpu *Cpu, mode enums.Modes) error {
-	value := int8(cpu.getNextByte())
-	cpu.logExecution("BPL", mode, uint16(value))
+	operand, err := cpu.loadInstructionOperand(mode)
+	if err != nil {
+		return err
+	}
+
+	cpu.logExecution("BPL", mode, operand)
+
+	value := int8(operand)
 
 	if cpu.P&N == 0 {
 		if value > 0 {
-			cpu.PC += uint16(value)
-		} else {
 			cpu.PC -= uint16(-value)
+		} else {
+			cpu.PC += uint16(value)
 		}
 	}
 
@@ -96,10 +102,10 @@ type DEXHandler struct {
 func (h *DEXHandler) Handle(cpu *Cpu, mode enums.Modes) error {
 	cpu.logExecution("DEX", mode, 0)
 
-	cpu.PC++
-
 	cpu.X--
 	cpu.setFlagsByValue(cpu.X)
+
+	cpu.PC++
 
 	return nil
 }
@@ -173,17 +179,22 @@ type JSRHandler struct {
 }
 
 func (h *JSRHandler) Handle(cpu *Cpu, mode enums.Modes) error {
-	operand := cpu.getNextUint16()
+	operand, err := cpu.loadInstructionOperand(mode)
+	if err != nil {
+		return err
+	}
 
 	cpu.logExecution("JSR", mode, operand)
 
-	value := cpu.PC + 1
-	cpu.PC = operand
+	stackValue := cpu.PC
 
-	cpu.setByte(uint16(cpu.S), byte((value>>8)&0xff))
+	cpu.setByte(uint16(cpu.S)+0x100, byte((stackValue>>8)&0xff))
 	cpu.S--
-	cpu.setByte(uint16(cpu.S), byte(value&0xff))
+	cpu.setByte(uint16(cpu.S)+0x100, byte(stackValue&0xff))
 	cpu.S--
+
+	cpu.PC = operand
+	cpu.PC++
 
 	return nil
 }
@@ -458,14 +469,20 @@ type BNEHandler struct {
 }
 
 func (h *BNEHandler) Handle(cpu *Cpu, mode enums.Modes) error {
-	value := int8(cpu.getNextByte())
-	cpu.logExecution("BNE", mode, uint16(value))
+	operand, err := cpu.loadInstructionOperand(mode)
+	if err != nil {
+		return err
+	}
 
-	if cpu.P&Z != 0 {
+	cpu.logExecution("BNE", mode, operand)
+
+	value := int8(operand)
+
+	if cpu.P&Z == 0 {
 		if value > 0 {
-			cpu.PC += uint16(value)
-		} else {
 			cpu.PC -= uint16(-value)
+		} else {
+			cpu.PC += uint16(value)
 		}
 	}
 
@@ -494,11 +511,7 @@ func (h *ADCHandler) Handle(cpu *Cpu, mode enums.Modes) error {
 
 	src, err := cpu.loadWithMemoryAccessType(mode, operand)
 	result := (src >> 1) | cByte
-
-	err = cpu.writeWithMemoryAccessType(mode, operand, result)
-	if err != nil {
-		return err
-	}
+	cpu.A = result
 
 	if src&1 == 0 {
 		cpu.P &= ^byte(C)
@@ -555,7 +568,7 @@ func (h *RTSHandler) Handle(cpu *Cpu, mode enums.Modes) error {
 	cpu.S++
 	byte2 := cpu.getByte(uint16(cpu.S) + 0x100)
 
-	cpu.PC = ((uint16(byte1) << 8) | uint16(byte2)) + 0x1
+	cpu.PC = (uint16(byte2) << 8) | uint16(byte1)
 	cpu.PC++
 
 	return nil
@@ -565,14 +578,20 @@ type BCCHandler struct {
 }
 
 func (h *BCCHandler) Handle(cpu *Cpu, mode enums.Modes) error {
-	value := int8(cpu.getNextByte())
-	cpu.logExecution("BCC", mode, uint16(value))
+	operand, err := cpu.loadInstructionOperand(mode)
+	if err != nil {
+		return err
+	}
+
+	cpu.logExecution("BCC", mode, operand)
+
+	value := int8(operand)
 
 	if cpu.P&byte(C) == 0 {
 		if value > 0 {
-			cpu.PC += uint16(value)
-		} else {
 			cpu.PC -= uint16(-value)
+		} else {
+			cpu.PC += uint16(value)
 		}
 	}
 
@@ -585,14 +604,22 @@ type BCSHandler struct {
 }
 
 func (h *BCSHandler) Handle(cpu *Cpu, mode enums.Modes) error {
-	value := int8(cpu.getNextByte())
-	cpu.logExecution("BCS", mode, uint16(value))
+	operand, err := cpu.loadInstructionOperand(mode)
+	if err != nil {
+		return err
+	}
+
+	cpu.logExecution("BCS", mode, operand)
+
+	value := int8(operand)
 
 	if cpu.P&byte(C) != 0 {
-		if value > 0 {
-			cpu.PC += uint16(value)
-		} else {
-			cpu.PC -= uint16(-value)
+		if cpu.P&N == 0 {
+			if value > 0 {
+				cpu.PC -= uint16(-value)
+			} else {
+				cpu.PC += uint16(value)
+			}
 		}
 	}
 
@@ -605,14 +632,22 @@ type BEQHandler struct {
 }
 
 func (h *BEQHandler) Handle(cpu *Cpu, mode enums.Modes) error {
-	value := int8(cpu.getNextByte())
-	cpu.logExecution("BEQ", mode, uint16(value))
+	operand, err := cpu.loadInstructionOperand(mode)
+	if err != nil {
+		return err
+	}
+
+	cpu.logExecution("BEQ", mode, operand)
+
+	value := int8(operand)
 
 	if cpu.P&byte(Z) != 0 {
-		if value > 0 {
-			cpu.PC += uint16(value)
-		} else {
-			cpu.PC -= uint16(-value)
+		if cpu.P&N == 0 {
+			if value > 0 {
+				cpu.PC -= uint16(-value)
+			} else {
+				cpu.PC += uint16(value)
+			}
 		}
 	}
 
@@ -666,14 +701,22 @@ type BMIHandler struct {
 }
 
 func (h *BMIHandler) Handle(cpu *Cpu, mode enums.Modes) error {
-	value := int8(cpu.getNextByte())
-	cpu.logExecution("BMI", mode, uint16(value))
+	operand, err := cpu.loadInstructionOperand(mode)
+	if err != nil {
+		return err
+	}
+
+	cpu.logExecution("BMI", mode, operand)
+
+	value := int8(operand)
 
 	if cpu.P&byte(N) != 0 {
-		if value > 0 {
-			cpu.PC += uint16(value)
-		} else {
-			cpu.PC -= uint16(-value)
+		if cpu.P&N == 0 {
+			if value > 0 {
+				cpu.PC -= uint16(-value)
+			} else {
+				cpu.PC += uint16(value)
+			}
 		}
 	}
 
@@ -701,14 +744,22 @@ type BVCHandler struct {
 }
 
 func (h *BVCHandler) Handle(cpu *Cpu, mode enums.Modes) error {
-	value := int8(cpu.getNextByte())
-	cpu.logExecution("BVC", mode, uint16(value))
+	operand, err := cpu.loadInstructionOperand(mode)
+	if err != nil {
+		return err
+	}
+
+	cpu.logExecution("BVC", mode, operand)
+
+	value := int8(operand)
 
 	if cpu.P&byte(V) == 0 {
-		if value > 0 {
-			cpu.PC += uint16(value)
-		} else {
-			cpu.PC -= uint16(-value)
+		if cpu.P&N == 0 {
+			if value > 0 {
+				cpu.PC -= uint16(-value)
+			} else {
+				cpu.PC += uint16(value)
+			}
 		}
 	}
 
@@ -721,14 +772,22 @@ type BVSHandler struct {
 }
 
 func (h *BVSHandler) Handle(cpu *Cpu, mode enums.Modes) error {
-	value := int8(cpu.getNextByte())
-	cpu.logExecution("BVS", mode, uint16(value))
+	operand, err := cpu.loadInstructionOperand(mode)
+	if err != nil {
+		return err
+	}
+
+	cpu.logExecution("BVS", mode, operand)
+
+	value := int8(operand)
 
 	if cpu.P&byte(V) != 0 {
-		if value > 0 {
-			cpu.PC += uint16(value)
-		} else {
-			cpu.PC -= uint16(-value)
+		if cpu.P&N == 0 {
+			if value > 0 {
+				cpu.PC -= uint16(-value)
+			} else {
+				cpu.PC += uint16(value)
+			}
 		}
 	}
 

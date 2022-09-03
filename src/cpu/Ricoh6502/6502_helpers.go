@@ -78,8 +78,10 @@ func (c *Cpu) loadInstructionOperand(mode enums.Modes) (uint16, error) {
 		return c.getNextUint16(), nil
 	case enums.ModeIMP:
 		return 0, nil
+	case enums.ModeREL:
+		return uint16(c.getNextByte()), nil
 	default:
-		return 0, fmt.Errorf("unsupported %d memory access type", mode)
+		return 0, fmt.Errorf("loadInstructionOperand: unsupported %d memory access type", mode)
 	}
 }
 
@@ -110,7 +112,7 @@ func (c *Cpu) loadWithMemoryAccessType(mode enums.Modes, operand uint16) (byte, 
 	case enums.ModeIMP:
 		return 0, nil
 	default:
-		return 0, fmt.Errorf("unsupported %d memory access type", mode)
+		return 0, fmt.Errorf("loadWithMemoryAccessType: unsupported %d memory access type", mode)
 	}
 }
 
@@ -145,7 +147,7 @@ func (c *Cpu) writeWithMemoryAccessType(mode enums.Modes, operand uint16, value 
 		c.setByte(uint16(address)+uint16(c.Y), value)
 		break
 	default:
-		return fmt.Errorf("unsupported %d memory access type", mode)
+		return fmt.Errorf("writeWithMemoryAccessType: unsupported %d memory access type", mode)
 	}
 
 	return nil
