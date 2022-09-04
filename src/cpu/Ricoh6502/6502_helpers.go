@@ -9,43 +9,43 @@ import (
 func (c *Cpu) logExecution(position uint16, opcode string, mode enums.Modes, operand uint16) {
 	switch mode {
 	case enums.ModeREL:
-		log.Printf("(0x%X) %s %X", position, opcode, int8(operand))
+		log.Printf("(0x%X) (REL) %s %X", position, opcode, int8(operand))
 		break
 	case enums.ModeIND:
-		log.Printf("(0x%X) %s $%X", position, opcode, operand)
+		log.Printf("(0x%X) (IND) %s $%X", position, opcode, operand)
 		break
 	case enums.ModeIMM:
-		log.Printf("(0x%X) %s #%X", position, opcode, operand)
+		log.Printf("(0x%X) (IMM) %s #%X", position, opcode, operand)
 		break
 	case enums.ModeAcc:
 		log.Printf("(0x%X) %s A", position, opcode)
 		break
 	case enums.ModeZP:
-		log.Printf("(0x%X) %s $%X", position, opcode, operand)
+		log.Printf("(0x%X) (ZP) %s $%X", position, opcode, operand)
 		break
 	case enums.ModeZPX:
-		log.Printf("(0x%X) %s $%X,X", position, opcode, operand)
+		log.Printf("(0x%X) (ZPX) %s $%X,X", position, opcode, operand)
 		break
 	case enums.ModeZPY:
-		log.Printf("(0x%X) %s $%X,X", position, opcode, operand)
+		log.Printf("(0x%X) (ZPY) %s $%X,X", position, opcode, operand)
 		break
 	case enums.ModeINDX:
-		log.Printf("(0x%X) %s $%X,X", position, opcode, operand)
+		log.Printf("(0x%X) (INDX) %s $%X,X", position, opcode, operand)
 		break
 	case enums.ModeINDY:
-		log.Printf("(0x%X) %s $%X,Y", position, opcode, operand)
+		log.Printf("(0x%X) (INDY) %s $%X,Y", position, opcode, operand)
 		break
 	case enums.ModeABS:
-		log.Printf("(0x%X) %s $%X", position, opcode, operand)
+		log.Printf("(0x%X) (ABS) %s $%X", position, opcode, operand)
 		break
 	case enums.ModeABSX:
-		log.Printf("(0x%X) %s $%X,X", position, opcode, operand)
+		log.Printf("(0x%X) (ABSX) %s $%X,X", position, opcode, operand)
 		break
 	case enums.ModeABSY:
-		log.Printf("(0x%X) %s $%X,Y", position, opcode, operand)
+		log.Printf("(0x%X) (ABSY) %s $%X,Y", position, opcode, operand)
 		break
 	case enums.ModeIMP:
-		log.Printf("(0x%X) %s", position, opcode)
+		log.Printf("(0x%X) (IMP) %s", position, opcode)
 		break
 	default:
 		log.Printf("(0x%X) %s %X", position, opcode, operand)

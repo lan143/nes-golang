@@ -1,13 +1,16 @@
 package ppu
 
-import "main/src/bus"
+import (
+	"main/src/bus"
+	"main/src/ppu/RP2A03"
+)
 
 type Factory struct {
 	b *bus.Bus
 }
 
 func (f *Factory) GetPPU() PPU {
-	return NewPPU(f.b)
+	return RP2A03.NewPPU(f.b)
 }
 
 func NewFactory(b *bus.Bus) *Factory {

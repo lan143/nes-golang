@@ -40,7 +40,7 @@ func (c *Cpu) Init(mapper mapper.Mapper) {
 	c.P.Init()
 	c.S.Init(mapper)
 
-	c.b.Subscribe(bus.VBlink, func() {
+	c.b.Subscribe(bus.NMIInterrupt, func() {
 		c.interruptMX.Lock()
 		c.hasInterrupt = true
 		c.interruptHandler = NMI
@@ -118,6 +118,13 @@ func (c *Cpu) getByte(address uint16) byte {
 	return c.mapper.GetByte(address)
 }
 
+func (c *Cpu) getUin16(address uint16) uint16 {
+	byteOne := c.mapper.GetByte(address)
+	byteTwo := c.mapper.GetByte(address + 1)
+
+	return uint16(byteOne) | (uint16(byteTwo))<<8
+}
+
 func (c *Cpu) getNextUint16() uint16 {
 	byteOne := c.getNextByte()
 	byteTwo := c.getNextByte()
@@ -127,6 +134,30 @@ func (c *Cpu) getNextUint16() uint16 {
 
 func (c *Cpu) setByte(address uint16, value byte) {
 	c.mapper.PutByte(address, value)
+
+	switch address {
+	case 0x2000:
+		c.b.PushEvent(bus.Write2000)
+		break
+	case 0x2001:
+		c.b.PushEvent(bus.Write2001)
+		break
+	case 0x2003:
+		c.b.PushEvent(bus.Write2003)
+		break
+	case 0x2005:
+		c.b.PushEvent(bus.Write2005)
+		break
+	case 0x2006:
+		c.b.PushEvent(bus.Write2006)
+		break
+	case 0x2007:
+		c.b.PushEvent(bus.Write2007)
+		break
+	case 0x4014:
+		c.b.PushEvent(bus.Write4014)
+		break
+	}
 }
 
 func (c *Cpu) interrupt(handler InterruptHandler) {

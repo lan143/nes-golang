@@ -428,7 +428,9 @@ type RTSHandler struct {
 }
 
 func (h *RTSHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
-	cpu.PC = cpu.S.PopUint16()
+	value := cpu.S.PopUint16()
+
+	cpu.PC = value
 	cpu.PC++
 
 	return nil
@@ -512,6 +514,8 @@ func (h *BITHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
 	} else {
 		cpu.P.SetV()
 	}
+
+	cpu.PC++
 
 	return nil
 }

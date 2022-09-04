@@ -3,7 +3,14 @@ package bus
 type Event byte
 
 const (
-	VBlink Event = 1
+	NMIInterrupt Event = 1
+	Write2000          = 2
+	Write2001          = 3
+	Write2003          = 3
+	Write2005          = 4
+	Write2006          = 5
+	Write2007          = 6
+	Write4014          = 7
 )
 
 type Bus struct {

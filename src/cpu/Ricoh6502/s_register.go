@@ -1,6 +1,8 @@
 package Ricoh6502
 
-import "main/src/mapper"
+import (
+	"main/src/mapper"
+)
 
 const (
 	StackOffset uint16 = 0x100
@@ -37,12 +39,14 @@ func (r *SRegister) PushByte(value byte) {
 func (r *SRegister) PopUint16() uint16 {
 	byte1 := r.PopByte()
 	byte2 := r.PopByte()
+	result := (uint16(byte2) << 8) | uint16(byte1)
 
-	return (uint16(byte2) << 8) | uint16(byte1)
+	return result
 }
 
 func (r *SRegister) PopByte() byte {
 	r.value++
+	result := r.mapper.GetByte(uint16(r.value) + StackOffset)
 
-	return r.mapper.GetByte(uint16(r.value) + StackOffset)
+	return result
 }

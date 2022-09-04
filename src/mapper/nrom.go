@@ -4,15 +4,23 @@ type NROMMapper struct {
 	memory [0xffff]byte
 }
 
+func (m *NROMMapper) HasChrRom() bool {
+	return true
+}
+
+func (m *NROMMapper) GetMirroringType() MirroringType {
+	return SingleScreen
+}
+
 func (m *NROMMapper) LoadRom(data []byte) {
 	var i, j uint16
 	j = 0
 
 	// Prg ROM
-	for i = 0x8000; i <= 0xBFFF; i++ {
+	/*for i = 0x8000; i <= 0xBFFF; i++ {
 		m.memory[i] = data[j]
 		j++
-	}
+	}*/
 
 	// Prg ROM
 	for i = 0xC000; i <= 0xFFFE; i++ {
