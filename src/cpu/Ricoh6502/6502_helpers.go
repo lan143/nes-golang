@@ -6,49 +6,49 @@ import (
 	"main/src/cpu/Ricoh6502/enums"
 )
 
-func (c *Cpu) logExecution(opcode string, mode enums.Modes, operand uint16) {
+func (c *Cpu) logExecution(position uint16, opcode string, mode enums.Modes, operand uint16) {
 	switch mode {
 	case enums.ModeREL:
-		log.Printf("%s %X", opcode, int8(operand))
+		log.Printf("(0x%X) %s %X", position, opcode, int8(operand))
 		break
 	case enums.ModeIND:
-		log.Printf("%s $%X", opcode, operand)
+		log.Printf("(0x%X) %s $%X", position, opcode, operand)
 		break
 	case enums.ModeIMM:
-		log.Printf("%s #%X", opcode, operand)
+		log.Printf("(0x%X) %s #%X", position, opcode, operand)
 		break
 	case enums.ModeAcc:
-		log.Printf("%s A", opcode)
+		log.Printf("(0x%X) %s A", position, opcode)
 		break
 	case enums.ModeZP:
-		log.Printf("%s $%X", opcode, operand)
+		log.Printf("(0x%X) %s $%X", position, opcode, operand)
 		break
 	case enums.ModeZPX:
-		log.Printf("%s $%X,X", opcode, operand)
+		log.Printf("(0x%X) %s $%X,X", position, opcode, operand)
 		break
 	case enums.ModeZPY:
-		log.Printf("%s $%X,X", opcode, operand)
+		log.Printf("(0x%X) %s $%X,X", position, opcode, operand)
 		break
 	case enums.ModeINDX:
-		log.Printf("%s $%X,X", opcode, operand)
+		log.Printf("(0x%X) %s $%X,X", position, opcode, operand)
 		break
 	case enums.ModeINDY:
-		log.Printf("%s $%X,Y", opcode, operand)
+		log.Printf("(0x%X) %s $%X,Y", position, opcode, operand)
 		break
 	case enums.ModeABS:
-		log.Printf("%s $%X", opcode, operand)
+		log.Printf("(0x%X) %s $%X", position, opcode, operand)
 		break
 	case enums.ModeABSX:
-		log.Printf("%s $%X,X", opcode, operand)
+		log.Printf("(0x%X) %s $%X,X", position, opcode, operand)
 		break
 	case enums.ModeABSY:
-		log.Printf("%s $%X,Y", opcode, operand)
+		log.Printf("(0x%X) %s $%X,Y", position, opcode, operand)
 		break
 	case enums.ModeIMP:
-		log.Printf("%s", opcode)
+		log.Printf("(0x%X) %s", position, opcode)
 		break
 	default:
-		log.Printf("%s %X", opcode, operand)
+		log.Printf("(0x%X) %s %X", position, opcode, operand)
 	}
 }
 

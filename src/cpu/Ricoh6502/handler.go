@@ -5,5 +5,5 @@ import (
 )
 
 type Handler interface {
-	Handle(cpu *Cpu, mode enums.Modes) error
+	Handle(cpu *Cpu, operand uint16, mode enums.Modes) error
 }

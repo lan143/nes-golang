@@ -8,19 +8,6 @@ import (
 	"sync"
 )
 
-type PFlag byte
-
-const (
-	C PFlag = 0x1  // перенос
-	Z       = 0x2  // ноль
-	I       = 0x4  // запрет внешних прерываний — IRQ (I=0 — прерывания разрешены)
-	D       = 0x8  // режим BCD для инструкций сложения и вычитания с переносом;
-	B       = 0x10 // обработка прерывания (B=1 после выполнения команды BRK);
-	// V 0x20 не используется, равен 1;
-	V = 0x40 // переполнение;
-	N = 0x80 // знак. Равен старшему биту значения, загруженного в A, X или Y в результате выполнения операции (кроме TXS).
-)
-
 type InterruptHandler uint16
 
 const (
@@ -31,11 +18,11 @@ const (
 )
 
 type Cpu struct {
-	A    byte   // аккумулятор, 8 бит;
-	X, Y byte   // индексные регистры, 8 бит;
-	PC   uint16 // счетчик команд, 16 бит;
-	S    byte   // указатель стека, 8 бит;
-	P    byte   // регистр состояния;
+	A    byte      // аккумулятор, 8 бит;
+	X, Y byte      // индексные регистры, 8 бит;
+	PC   uint16    // счетчик команд, 16 бит;
+	S    SRegister // указатель стека, 8 бит;
+	P    PRegister // регистр состояния;
 
 	mapper           mapper.Mapper
 	decoder          Decoder
@@ -50,16 +37,15 @@ func (c *Cpu) Init(mapper mapper.Mapper) {
 	c.mapper = mapper
 	c.decoder.InitCommands()
 
+	c.P.Init()
+	c.S.Init(mapper)
+
 	c.b.Subscribe(bus.VBlink, func() {
 		c.interruptMX.Lock()
 		c.hasInterrupt = true
 		c.interruptHandler = NMI
 		c.interruptMX.Unlock()
 	})
-
-	c.P = 0
-	c.P |= 0x20
-	c.S = 0xFD
 }
 
 func (c *Cpu) Reset() {
@@ -70,17 +56,11 @@ func (c *Cpu) Reset() {
 }
 
 func (c *Cpu) Run() {
-	breakLoop := false
-
 	if c.PC == 0 {
 		c.Reset()
 	}
 
 	for {
-		if breakLoop {
-			break
-		}
-
 		c.interruptMX.RLock()
 		if c.hasInterrupt {
 			c.hasInterrupt = false
@@ -88,29 +68,44 @@ func (c *Cpu) Run() {
 		}
 		c.interruptMX.RUnlock()
 
-		fmt.Printf("PC: 0x%X ", c.PC)
-		command := c.mapper.GetByte(c.PC)
-
-		found := false
-
-		for _, d := range c.decoder.Commands {
-			if d.Command == command {
-				found = true
-				err := d.Handler.Handle(c, d.Mode)
-
-				if err != nil {
-					breakLoop = true
-					log.Printf("Error: %s", err)
-				}
-				break
-			}
-		}
-
-		if !found {
-			breakLoop = true
-			log.Printf("Handler for command 0x%X not found", command)
+		err := c.processCommand()
+		if err != nil {
+			log.Println(err)
+			break
 		}
 	}
+}
+
+func (c *Cpu) processCommand() error {
+	position := c.PC
+	command := c.mapper.GetByte(c.PC)
+
+	found := false
+
+	for _, d := range c.decoder.Commands {
+		if d.Command == command {
+			found = true
+			operand, err := c.loadInstructionOperand(d.Mode)
+
+			if err != nil {
+				return err
+			}
+
+			c.logExecution(position, d.OpcodeName, d.Mode, operand)
+
+			err = d.Handler.Handle(c, operand, d.Mode)
+
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("handler for command 0x%X not found", command)
+	}
+
+	return nil
 }
 
 func (c *Cpu) getNextByte() byte {
@@ -134,48 +129,22 @@ func (c *Cpu) setByte(address uint16, value byte) {
 	c.mapper.PutByte(address, value)
 }
 
-func (c *Cpu) setFlagsByValue(value byte) {
-	if value&0x80 > 0 {
-		c.P |= N
-	} else {
-		c.P &= ^byte(N)
-	}
-
-	if value == 0 {
-		c.P |= Z
-	} else {
-		c.P &= ^byte(Z)
-	}
-}
-
-func (c *Cpu) setCorrectionBit(value byte) {
-	if value > 0 {
-		c.P |= byte(C)
-	} else {
-		c.P &= ^byte(C)
-	}
-}
-
 func (c *Cpu) interrupt(handler InterruptHandler) {
-	if handler == IRQ && c.P&I > 0 {
+	if handler == IRQ && c.P.IsI() {
 		return
 	}
 
 	if handler != Reset {
 		if handler != BRK {
-			c.P &= ^byte(B)
+			c.P.ClearB()
 		}
 
-		c.P |= I
+		c.P.SetI()
 
 		stackValue := c.PC
 
-		c.setByte(uint16(c.S)+0x100, byte((stackValue>>8)&0xff))
-		c.S--
-		c.setByte(uint16(c.S)+0x100, byte(stackValue&0xff))
-		c.S--
-		c.setByte(uint16(c.S)+0x100, c.P)
-		c.S--
+		c.S.PushUint16(stackValue)
+		c.S.PushByte(c.P.GetValue())
 	}
 
 	address1 := c.mapper.GetByte(uint16(handler))
