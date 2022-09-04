@@ -6,6 +6,7 @@ import (
 	"main/src/cpu"
 	"main/src/display"
 	"main/src/mapper"
+	"main/src/mapper/enum"
 	"main/src/ppu"
 	"main/src/rom"
 	"os"
@@ -41,12 +42,12 @@ func (n *Nes) Init() error {
 	}
 
 	// @todo: transfer mapper id from rom
-	m, err := n.mapperFactory.GetMapper(mapper.NROM)
+	m, err := n.mapperFactory.GetMapper(enum.NROM)
 	if err != nil {
 		return err
 	}
 
-	m.LoadRom(r.GetData())
+	m.LoadRom(r)
 
 	n.display = n.displayFactory.GetDisplay()
 	n.display.Init()

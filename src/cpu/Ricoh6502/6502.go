@@ -77,7 +77,7 @@ func (c *Cpu) Run() {
 }
 
 func (c *Cpu) processCommand() error {
-	position := c.PC
+	//position := c.PC
 	command := c.mapper.GetByte(c.PC)
 
 	found := false
@@ -91,7 +91,7 @@ func (c *Cpu) processCommand() error {
 				return err
 			}
 
-			c.logExecution(position, d.OpcodeName, d.Mode, operand)
+			//c.logExecution(position, d.OpcodeName, d.Mode, operand)
 
 			err = d.Handler.Handle(c, operand, d.Mode)
 
@@ -144,6 +144,9 @@ func (c *Cpu) setByte(address uint16, value byte) {
 		break
 	case 0x2003:
 		c.b.PushEvent(bus.Write2003)
+		break
+	case 0x2004:
+		c.b.PushEvent(bus.Write2004)
 		break
 	case 0x2005:
 		c.b.PushEvent(bus.Write2005)

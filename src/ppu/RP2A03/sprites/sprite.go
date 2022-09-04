@@ -31,12 +31,12 @@ func (s *Sprite) IsVisible() bool {
 	return s.data[0] < 0xEF
 }
 
-func (s *Sprite) GetYPosition() byte {
-	return s.data[0] - 1
-}
-
 func (s *Sprite) GetXPosition() byte {
 	return s.data[3]
+}
+
+func (s *Sprite) GetYPosition() byte {
+	return s.data[0] - 1
 }
 
 func (s *Sprite) GetTileIndex() byte {
@@ -71,8 +71,8 @@ func (s *Sprite) DoFlipVertically() bool {
 	}
 }
 
-func (s *Sprite) On(y byte, length byte) bool {
-	return (y >= s.GetYPosition()) && (y < s.GetYPosition()+length)
+func (s *Sprite) On(y uint16, length byte) bool {
+	return (y >= uint16(s.GetYPosition())) && (y < uint16(s.GetYPosition()+length))
 }
 
 func NewSprite(id, index uint16, data []byte) Sprite {

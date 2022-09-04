@@ -2,6 +2,7 @@ package rom
 
 import (
 	"log"
+	"main/src/mapper/enum"
 	"os"
 )
 
@@ -15,6 +16,26 @@ type INes struct {
 	flags10    uint8 // TV system, PRG-RAM presence (unofficial, rarely used extension)
 
 	Data []byte
+}
+
+func (n *INes) GetPrgRomSize() uint8 {
+	return n.prgRomSize
+}
+
+func (n *INes) GetChrRomSize() uint8 {
+	return n.chrRomSize
+}
+
+func (n *INes) GetMirroringType() enum.MirroringType {
+	if n.flags6&0x8 > 0 {
+		return enum.FourScreen
+	}
+
+	if n.flags6&0x1 > 0 {
+		return enum.Vertical
+	} else {
+		return enum.Horizontal
+	}
 }
 
 func (n *INes) Load(file *os.File) error {

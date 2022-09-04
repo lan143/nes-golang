@@ -1,4 +1,4 @@
-package mapper
+package enum
 
 type MirroringType byte
 

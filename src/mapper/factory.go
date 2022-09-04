@@ -1,13 +1,16 @@
 package mapper
 
-import "fmt"
+import (
+	"fmt"
+	"main/src/mapper/enum"
+)
 
 type Factory struct {
 }
 
-func (f *Factory) GetMapper(id Id) (Mapper, error) {
+func (f *Factory) GetMapper(id enum.Id) (Mapper, error) {
 	switch id {
-	case NROM:
+	case enum.NROM:
 		return &NROMMapper{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported mapper %d", id)

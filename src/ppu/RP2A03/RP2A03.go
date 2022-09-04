@@ -4,6 +4,7 @@ import (
 	"main/src/bus"
 	"main/src/display"
 	"main/src/mapper"
+	"main/src/mapper/enum"
 	"main/src/ppu/RP2A03/registers"
 	"main/src/ppu/RP2A03/sprites"
 )
@@ -48,7 +49,7 @@ type PPU struct {
 	currentVRamAddress  uint16
 	temporalVRamAddress uint16
 
-	vRamReadBuffer     uint
+	vRamReadBuffer     byte
 	registerFirstStore bool
 
 	spritePixels     [256]uint32
@@ -87,6 +88,9 @@ func (p *PPU) Init(mapper mapper.Mapper, display display.Display) {
 
 	p.bus.Subscribe(bus.Write2000, func() {
 		p.ppuCtrl.SetValue(p.mapper.GetByte(0x2000))
+
+		p.temporalVRamAddress &= ^uint16(0xC00)
+		p.temporalVRamAddress |= (uint16(p.ppuCtrl.GetValue()) & 0x3) << 10
 	})
 	p.bus.Subscribe(bus.Write2001, func() {
 		p.ppuMask.SetValue(p.mapper.GetByte(0x2001))
@@ -94,21 +98,64 @@ func (p *PPU) Init(mapper mapper.Mapper, display display.Display) {
 	p.bus.Subscribe(bus.Write2003, func() {
 		p.oamAddr = p.mapper.GetByte(0x2003)
 	})
+	p.bus.Subscribe(bus.Write2004, func() {
+		p.oamData = p.mapper.GetByte(0x2004)
+		p.oamRam[p.oamAddr] = p.mapper.GetByte(0x2004)
+		p.oamAddr++
+	})
 	p.bus.Subscribe(bus.Write2005, func() {
 		p.ppuScroll = p.mapper.GetByte(0x2005)
+
+		if p.registerFirstStore {
+			p.fineXScroll = uint16(p.ppuScroll) & 0x7
+			p.temporalVRamAddress &= ^uint16(0x1F)
+			p.temporalVRamAddress |= (uint16(p.mapper.GetByte(0x2005)) >> 3) & 0x1F
+		} else {
+			p.temporalVRamAddress &= ^uint16(0x73E0)
+			p.temporalVRamAddress |= (uint16(p.mapper.GetByte(0x2005)) & 0xF8) << 2
+			p.temporalVRamAddress |= (uint16(p.mapper.GetByte(0x2005)) & 0x7) << 12
+		}
+
+		p.registerFirstStore = !p.registerFirstStore
 	})
 	p.bus.Subscribe(bus.Write2006, func() {
-		p.ppuAddr = p.mapper.GetByte(0x2006)
+		value := p.mapper.GetByte(0x2006)
+
+		if p.registerFirstStore {
+			p.temporalVRamAddress &= ^uint16(0x7F00)
+			p.temporalVRamAddress |= (uint16(value) & 0x3F) << 8
+			//p.temporalVRamAddress = uint16(value) << 8
+		} else {
+			p.ppuAddr = value
+			p.temporalVRamAddress &= ^uint16(0xFF)
+			p.temporalVRamAddress |= uint16(value) & 0xFF
+			//p.temporalVRamAddress |= uint16(value)
+			p.currentVRamAddress = p.temporalVRamAddress
+		}
+
+		p.registerFirstStore = !p.registerFirstStore
 	})
 	p.bus.Subscribe(bus.Write2007, func() {
 		p.ppuData = p.mapper.GetByte(0x2007)
+		p.store(p.currentVRamAddress, p.ppuData)
+
+		var incAddr uint16
+		if p.ppuCtrl.IsIncrementAddress() {
+			incAddr = 32
+		} else {
+			incAddr = 1
+		}
+
+		p.currentVRamAddress += incAddr
+		p.currentVRamAddress &= 0x7FFF
+		p.ppuAddr = byte(p.currentVRamAddress) & 0xFF
 	})
 	p.bus.Subscribe(bus.Write4014, func() {
 		p.oamDma = p.mapper.GetByte(0x4014)
 		offset := uint16(p.oamDma) * 0x100
 		var i uint16
 
-		for i = uint16(p.oamDma); i < 256; i++ {
+		for i = uint16(p.oamAddr); i < 256; i++ {
 			p.oamRam[i] = p.mapper.GetByte(offset + i)
 		}
 	})
@@ -260,7 +307,7 @@ func (p *PPU) evaluateSprites() {
 		for i = 0; i < il; i++ {
 			s := p.spritesManager.GetSprite(i)
 
-			if s.On(byte(p.scanline), height) {
+			if s.On(p.scanline, height) {
 				if n < 8 {
 					p.spritesManager2.Copy(n, s)
 					n++
@@ -301,8 +348,8 @@ func (p *PPU) processSpritePixels() {
 		}
 
 		bx := uint16(s.GetXPosition())
-		by := s.GetYPosition()
-		j := ay - uint16(by)
+		by := uint16(s.GetYPosition())
+		j := ay - by
 
 		var cy uint16
 		if s.DoFlipVertically() {
@@ -498,10 +545,10 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 	var baseAddress uint16
 
 	switch p.mapper.GetMirroringType() {
-	case mapper.SingleScreen:
+	case enum.SingleScreen:
 		baseAddress = 0x2000
 		break
-	case mapper.Horizontal:
+	case enum.Horizontal:
 		if address >= 0x2000 && address < 0x2400 {
 			baseAddress = 0x2000
 		} else if address >= 0x2400 && address < 0x2800 {
@@ -512,7 +559,7 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 			baseAddress = 0x2400
 		}
 		break
-	case mapper.Vertical:
+	case enum.Vertical:
 		if address >= 0x2000 && address < 0x2400 {
 			baseAddress = 0x2000
 		} else if address >= 0x2400 && address < 0x2800 {
@@ -523,7 +570,7 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 			baseAddress = 0x2400
 		}
 		break
-	case mapper.FourScreen:
+	case enum.FourScreen:
 		if address >= 0x2000 && address < 0x2400 {
 			baseAddress = 0x2000
 		} else if address >= 0x2400 && address < 0x2800 {
@@ -539,12 +586,65 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 	return baseAddress | (address & 0x3FF)
 }
 
+func (p *PPU) store(address uint16, value byte) {
+	address = address & 0x3FFF // just in case
+
+	// 0x0000 - 0x1FFF is mapped with cartridge's CHR-ROM if it exists
+
+	if address < 0x2000 && p.mapper.HasChrRom() {
+		p.mapper.PutByte(address, value)
+		return
+	}
+
+	// 0x0000 - 0x0FFF: pattern table 0
+	// 0x1000 - 0x1FFF: pattern table 1
+	// 0x2000 - 0x23FF: nametable 0
+	// 0x2400 - 0x27FF: nametable 1
+	// 0x2800 - 0x2BFF: nametable 2
+	// 0x2C00 - 0x2FFF: nametable 3
+	// 0x3000 - 0x3EFF: Mirrors of 0x2000 - 0x2EFF
+	// 0x3F00 - 0x3F1F: Palette RAM indices
+	// 0x3F20 - 0x3FFF: Mirrors of 0x3F00 - 0x3F1F
+
+	if address >= 0x2000 && address < 0x3F00 {
+		p.vRam[p.getNameTableAddressWithMirroring(address&0x2FFF)] = value
+		return
+	}
+
+	if address >= 0x3F00 && address < 0x4000 {
+		address = address & 0x3F1F
+	}
+
+	// Addresses for palette
+	// 0x3F10/0x3F14/0x3F18/0x3F1C are mirrors of
+	// 0x3F00/0x3F04/0x3F08/0x3F0C.
+
+	if address == 0x3F10 {
+		address = 0x3F00
+	}
+
+	if address == 0x3F14 {
+		address = 0x3F04
+	}
+
+	if address == 0x3F18 {
+		address = 0x3F08
+	}
+
+	if address == 0x3F1C {
+		address = 0x3F0C
+	}
+
+	p.vRam[address] = value
+	p.mapper.PutByte(address, value)
+}
+
 func (p *PPU) load(address uint16) byte {
 	address = address & 0x3FFF // just in case
 
 	// 0x0000 - 0x1FFF is mapped with cartridge's CHR-ROM if it exists
 	if address < 0x2000 && p.mapper.HasChrRom() {
-		return p.mapper.GetByte(address)
+		return p.mapper.GetChrByte(address)
 	}
 
 	// 0x0000 - 0x0FFF: pattern table 0
@@ -618,7 +718,7 @@ func (p *PPU) renderPixel() {
 	spriteId := p.spriteIds[x]
 	spritePriority := p.spritePriorities[x]
 
-	c := p.palette.GetValue(p.mapper.GetByte(0x3F00))
+	c := p.palette.GetValue(p.load(0x3F00))
 
 	if backgroundVisible && spritesVisible {
 		if spritePixel == 0x80000000 {

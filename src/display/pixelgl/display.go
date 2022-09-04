@@ -24,8 +24,7 @@ func (d *Display) Run() {
 }
 
 func (d *Display) UpdateScreen() {
-	d.updateScreenCh <- struct {
-	}{}
+	d.updateScreenCh <- struct{}{}
 }
 
 func (d *Display) runInternal() {
@@ -48,7 +47,6 @@ func (d *Display) runInternal() {
 		if !d.win.Closed() {
 			d.canvas.SetPixels(d.buffer.Pix)
 			d.canvas.Draw(d.win, pixel.IM.Moved(d.win.Bounds().Center()))
-
 			d.win.Update()
 		}
 	}
@@ -59,7 +57,7 @@ func (d *Display) RenderPixel(x, y uint16, color uint32) {
 		R: uint8(color >> 16),
 		G: uint8(color >> 8),
 		B: uint8(color),
-		A: 255,
+		A: uint8(color >> 24),
 	})
 }
 

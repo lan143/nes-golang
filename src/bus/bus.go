@@ -6,11 +6,12 @@ const (
 	NMIInterrupt Event = 1
 	Write2000          = 2
 	Write2001          = 3
-	Write2003          = 3
-	Write2005          = 4
-	Write2006          = 5
-	Write2007          = 6
-	Write4014          = 7
+	Write2003          = 4
+	Write2004          = 5
+	Write2005          = 6
+	Write2006          = 7
+	Write2007          = 8
+	Write4014          = 9
 )
 
 type Bus struct {
