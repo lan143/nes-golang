@@ -15,7 +15,7 @@ type Display struct {
 }
 
 func (d *Display) Init() {
-	d.buffer = image.NewRGBA(image.Rect(0, 0, 256, 240))
+	d.buffer = image.NewRGBA(image.Rect(0, 0, 1024, 960))
 	d.updateScreenCh = make(chan any)
 }
 
@@ -29,8 +29,9 @@ func (d *Display) UpdateScreen() {
 
 func (d *Display) runInternal() {
 	cfg := pixelgl.WindowConfig{
-		Title:  "NES EMU",
-		Bounds: pixel.R(0, 0, 256, 240),
+		Title: "NES EMU",
+		//Bounds: pixel.R(0, 0, 256, 240),
+		Bounds: pixel.R(0, 0, 1024, 960),
 	}
 
 	var err error
@@ -53,12 +54,18 @@ func (d *Display) runInternal() {
 }
 
 func (d *Display) RenderPixel(x, y uint16, color uint32) {
-	d.buffer.Set(int(x), int(y), color2.RGBA{
-		R: uint8(color >> 16),
-		G: uint8(color >> 8),
-		B: uint8(color),
-		A: uint8(color >> 24),
-	})
+	y = 240 - y
+
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 4; j++ {
+			d.buffer.Set((int(x)*4)+j, (int(y)*4)+i, color2.RGBA{
+				R: uint8(color),
+				G: uint8(color >> 8),
+				B: uint8(color >> 16),
+				A: uint8(color >> 24),
+			})
+		}
+	}
 }
 
 func NewDisplay() *Display {

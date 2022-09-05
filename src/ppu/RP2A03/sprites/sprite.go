@@ -18,11 +18,6 @@ func (s *Sprite) GetData() []byte {
 	return s.data
 }
 
-func (s *Sprite) Copy(sprite Sprite) {
-	s.id = sprite.id
-	s.data = sprite.data
-}
-
 func (s *Sprite) IsEmpty() bool {
 	return s.data[0] == 0xFF && s.data[1] == 0xFF && s.data[2] == 0xFF && s.data[3] == 0xFF
 }

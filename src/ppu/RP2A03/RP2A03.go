@@ -321,7 +321,8 @@ func (p *PPU) evaluateSprites() {
 }
 
 func (p *PPU) processSpritePixels() {
-	ay := p.scanline - 1
+	//ay := int16(p.scanline) - 1
+	ay := int16(p.scanline)
 	var i int
 	il := len(p.spritePixels)
 
@@ -331,7 +332,7 @@ func (p *PPU) processSpritePixels() {
 		p.spritePriorities[i] = 0x80000000
 	}
 
-	var height uint16
+	var height int16
 	if p.ppuCtrl.IsSpritesSize() {
 		height = 16
 	} else {
@@ -347,11 +348,11 @@ func (p *PPU) processSpritePixels() {
 			break
 		}
 
-		bx := uint16(s.GetXPosition())
-		by := uint16(s.GetYPosition())
+		bx := int16(s.GetXPosition())
+		by := int16(s.GetYPosition())
 		j := ay - by
 
-		var cy uint16
+		var cy int16
 		if s.DoFlipVertically() {
 			cy = height - j - 1
 		} else {
@@ -359,38 +360,37 @@ func (p *PPU) processSpritePixels() {
 		}
 
 		horizontal := s.DoFlipHorizontally()
-		var ptIndex uint16
+		var ptIndex int16
 
 		if height == 8 {
-			ptIndex = uint16(s.GetTileIndex())
+			ptIndex = int16(s.GetTileIndex())
 		} else {
-			ptIndex = s.GetTileIndexForSize16()
+			ptIndex = int16(s.GetTileIndexForSize16())
 		}
 
-		msb := uint16(s.GetPalletNum())
-		var k uint16
+		msb := s.GetPalletNum()
+		var k byte
 
 		for k = 0; k < 8; k++ {
 			var cx uint16
 			if horizontal {
-				cx = 7 - k
+				cx = uint16(7 - k)
 			} else {
-				cx = k
+				cx = uint16(k)
 			}
 
-			x := bx + k
+			x := bx + int16(k)
 
 			if x >= 256 {
 				break
 			}
 
-			lsb := uint16(p.getPatternTableElement(ptIndex, cx, cy, height))
+			lsb := p.getPatternTableElement(uint16(ptIndex), cx, uint16(cy), uint16(height))
 
 			if lsb != 0 {
 				pIndex := (msb << 2) | lsb
-
 				if p.spritePixels[x] == 0x80000000 {
-					p.spritePixels[x] = p.palette.GetValue(p.load(0x3F10 + pIndex))
+					p.spritePixels[x] = p.palette.GetValue(p.load(0x3F10 + uint16(pIndex)))
 					p.spriteIds[x] = uint32(s.GetId())
 					p.spritePriorities[x] = uint32(s.GetPriority())
 				}
@@ -422,7 +422,7 @@ func (p *PPU) getPatternTableElement(index, x, y, ySize uint16) byte {
 		b = p.load(index + ay + 0x8)
 	}
 
-	return ((a >> (7 - byte(ax))) & 1) | (((b >> (7 - byte(ax))) & 1) << 1)
+	return ((a >> (7 - ax)) & 1) | (((b >> (7 - ax)) & 1) << 1)
 }
 
 func (p *PPU) fetch() {
