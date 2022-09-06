@@ -10,6 +10,7 @@ type Mapper interface {
 	GetByte(address uint16) byte
 	GetChrByte(address uint16) byte
 	PutByte(address uint16, value byte)
+	PutChrByte(address uint16, value byte)
 	HasChrRom() bool
 	GetMirroringType() enum.MirroringType
 }

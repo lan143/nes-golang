@@ -7,6 +7,7 @@ import (
 	"main/src/mapper/enum"
 	"main/src/ppu/RP2A03/registers"
 	"main/src/ppu/RP2A03/sprites"
+	"main/src/ram"
 )
 
 type PPU struct {
@@ -58,12 +59,15 @@ type PPU struct {
 
 	spritesManager  sprites.Manager
 	spritesManager2 sprites.Manager
+
+	cpuRam *ram.Ram
 }
 
-func (p *PPU) Init(mapper mapper.Mapper, display display.Display) {
+func (p *PPU) Init(mapper mapper.Mapper, display display.Display, cpuRam *ram.Ram) {
 	p.mapper = mapper
 	p.display = display
 	p.palette.Init()
+	p.cpuRam = cpuRam
 
 	p.nameTableLatch = 0
 	p.attributeTableLowLatch = 0
@@ -156,7 +160,7 @@ func (p *PPU) Init(mapper mapper.Mapper, display display.Display) {
 		var i uint16
 
 		for i = uint16(p.oamAddr); i < 256; i++ {
-			p.oamRam[i] = p.mapper.GetByte(offset + i)
+			p.oamRam[i] = p.cpuRam.GetByte(offset + i)
 		}
 	})
 }
@@ -321,8 +325,7 @@ func (p *PPU) evaluateSprites() {
 }
 
 func (p *PPU) processSpritePixels() {
-	//ay := int16(p.scanline) - 1
-	ay := int16(p.scanline)
+	ay := int16(p.scanline) - 1
 	var i int
 	il := len(p.spritePixels)
 
@@ -389,6 +392,7 @@ func (p *PPU) processSpritePixels() {
 
 			if lsb != 0 {
 				pIndex := (msb << 2) | lsb
+
 				if p.spritePixels[x] == 0x80000000 {
 					p.spritePixels[x] = p.palette.GetValue(p.load(0x3F10 + uint16(pIndex)))
 					p.spriteIds[x] = uint32(s.GetId())
@@ -401,12 +405,11 @@ func (p *PPU) processSpritePixels() {
 
 func (p *PPU) getPatternTableElement(index, x, y, ySize uint16) byte {
 	ax := x % 8
+	ay := y % 8
 	var a, b byte
+	var offset uint16
 
 	if ySize == 8 {
-		ay := y % 8
-		var offset uint16
-
 		if p.ppuCtrl.IsSpritesPatternTable() {
 			offset = 0x1000
 		} else {
@@ -416,7 +419,6 @@ func (p *PPU) getPatternTableElement(index, x, y, ySize uint16) byte {
 		a = p.load(offset + index*0x10 + ay)
 		b = p.load(offset + index*0x10 + 0x8 + ay)
 	} else {
-		ay := y % 8
 		ay += (y >> 3) * 0x10
 		a = p.load(index + ay)
 		b = p.load(index + ay + 0x8)
@@ -587,12 +589,9 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 }
 
 func (p *PPU) store(address uint16, value byte) {
-	address = address & 0x3FFF // just in case
-
 	// 0x0000 - 0x1FFF is mapped with cartridge's CHR-ROM if it exists
-
 	if address < 0x2000 && p.mapper.HasChrRom() {
-		p.mapper.PutByte(address, value)
+		p.mapper.PutChrByte(address, value)
 		return
 	}
 
@@ -636,12 +635,9 @@ func (p *PPU) store(address uint16, value byte) {
 	}
 
 	p.vRam[address] = value
-	p.mapper.PutByte(address, value)
 }
 
 func (p *PPU) load(address uint16) byte {
-	address = address & 0x3FFF // just in case
-
 	// 0x0000 - 0x1FFF is mapped with cartridge's CHR-ROM if it exists
 	if address < 0x2000 && p.mapper.HasChrRom() {
 		return p.mapper.GetChrByte(address)

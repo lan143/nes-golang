@@ -1,7 +1,7 @@
 package Ricoh6502
 
 import (
-	"main/src/mapper"
+	"main/src/ram"
 )
 
 const (
@@ -9,12 +9,12 @@ const (
 )
 
 type SRegister struct {
-	value  byte
-	mapper mapper.Mapper
+	value byte
+	ram   *ram.Ram
 }
 
-func (r *SRegister) Init(mapper mapper.Mapper) {
-	r.mapper = mapper
+func (r *SRegister) Init(ram *ram.Ram) {
+	r.ram = ram
 	r.value = 0xFD
 }
 
@@ -32,7 +32,7 @@ func (r *SRegister) PushUint16(value uint16) {
 }
 
 func (r *SRegister) PushByte(value byte) {
-	r.mapper.PutByte(uint16(r.value)+StackOffset, value)
+	r.ram.SetByte(uint16(r.value)+StackOffset, value)
 	r.value--
 }
 
@@ -46,7 +46,7 @@ func (r *SRegister) PopUint16() uint16 {
 
 func (r *SRegister) PopByte() byte {
 	r.value++
-	result := r.mapper.GetByte(uint16(r.value) + StackOffset)
+	result := r.ram.GetByte(uint16(r.value) + StackOffset)
 
 	return result
 }

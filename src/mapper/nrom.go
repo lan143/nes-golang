@@ -19,10 +19,6 @@ func (m *NROMMapper) GetMirroringType() enum.MirroringType {
 	return m.rom.GetMirroringType()
 }
 
-func (m *NROMMapper) GetChrByte(address uint16) byte {
-	return m.chrRom[address]
-}
-
 func (m *NROMMapper) LoadRom(rom rom.Rom) {
 	m.rom = rom
 
@@ -44,6 +40,8 @@ func (m *NROMMapper) LoadRom(rom rom.Rom) {
 		j++
 	}
 
+	j++
+
 	// Chr ROM
 	for i = 0x0000; i <= 0x1FFF; i++ {
 		m.chrRom[i] = data[j]
@@ -57,4 +55,12 @@ func (m *NROMMapper) GetByte(address uint16) byte {
 
 func (m *NROMMapper) PutByte(address uint16, value byte) {
 	m.memory[address] = value
+}
+
+func (m *NROMMapper) GetChrByte(address uint16) byte {
+	return m.chrRom[address]
+}
+
+func (m *NROMMapper) PutChrByte(address uint16, value byte) {
+	m.chrRom[address] = value
 }

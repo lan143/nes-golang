@@ -8,6 +8,7 @@ import (
 	"main/src/mapper"
 	"main/src/mapper/enum"
 	"main/src/ppu"
+	"main/src/ram"
 	"main/src/rom"
 	"os"
 )
@@ -52,11 +53,14 @@ func (n *Nes) Init() error {
 	n.display = n.displayFactory.GetDisplay()
 	n.display.Init()
 
+	cpuRam := &ram.Ram{}
+	cpuRam.Init(0x0800)
+
 	n.cpu = n.cpuFactory.GetCPU()
-	n.cpu.Init(m)
+	n.cpu.Init(m, cpuRam)
 
 	n.ppu = n.ppuFactory.GetPPU()
-	n.ppu.Init(m, n.display)
+	n.ppu.Init(m, n.display, cpuRam)
 
 	return nil
 }
