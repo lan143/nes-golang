@@ -17,6 +17,10 @@ func (r *PPUStatusRegister) GetValue() byte {
 	return byte(r.value)
 }
 
+func (r *PPUStatusRegister) SetValue(value byte) {
+	r.value = PPUStatusFlag(value)
+}
+
 func (r *PPUStatusRegister) IsSpriteZeroHit() bool {
 	return r.isFlag(SpriteZeroHit)
 }

@@ -30,9 +30,8 @@ type Nes struct {
 func (n *Nes) Init() error {
 	n.bus.Init()
 
-	// @todo: implement load file name from cmd
-	//f, err := os.Open("battle_city.nes")
-	f, err := os.Open("helloworld.nes")
+	args := os.Args[1:]
+	f, err := os.Open(args[0])
 	if err != nil {
 		panic(err)
 	}
@@ -67,8 +66,15 @@ func (n *Nes) Init() error {
 
 func (n *Nes) Run(ctx context.Context) {
 	// @todo: use wait group, run all in goroutines, process signals from OS...
-	go n.ppu.Run()
-	go n.cpu.Run()
+	go func() {
+		//timer := time.NewTimer(time.Second / 600000)
+		for {
+			//<-timer.C
+			//timer.Reset(time.Second / 600000)
+			n.cpu.Run()
+			n.ppu.Run()
+		}
+	}()
 
 	n.display.Run()
 }

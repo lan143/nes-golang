@@ -43,7 +43,9 @@ func (c *Cpu) Init(mapper mapper.Mapper, ram *ram.Ram) {
 	c.P.Init()
 	c.S.Init(c.ram)
 
-	c.b.Subscribe(bus.NMIInterrupt, func() {
+	c.Reset()
+
+	c.b.OnInterrupt(bus.NMI, func() {
 		c.interruptMX.Lock()
 		c.hasInterrupt = true
 		c.interruptHandler = NMI
@@ -59,29 +61,22 @@ func (c *Cpu) Reset() {
 }
 
 func (c *Cpu) Run() {
-	if c.PC == 0 {
-		c.Reset()
+	c.interruptMX.RLock()
+	if c.hasInterrupt {
+		c.hasInterrupt = false
+		c.interrupt(c.interruptHandler)
 	}
+	c.interruptMX.RUnlock()
 
-	for {
-		c.interruptMX.RLock()
-		if c.hasInterrupt {
-			c.hasInterrupt = false
-			c.interrupt(c.interruptHandler)
-		}
-		c.interruptMX.RUnlock()
-
-		err := c.processCommand()
-		if err != nil {
-			log.Println(err)
-			break
-		}
+	err := c.processCommand()
+	if err != nil {
+		log.Println(err)
 	}
 }
 
 func (c *Cpu) processCommand() error {
 	//position := c.PC
-	command := c.mapper.GetByte(c.PC)
+	command := c.getByte(c.PC)
 
 	found := false
 
@@ -117,6 +112,13 @@ func (c *Cpu) getNextByte() byte {
 	return c.getByte(c.PC)
 }
 
+func (c *Cpu) getNextUint16() uint16 {
+	byteOne := c.getNextByte()
+	byteTwo := c.getNextByte()
+
+	return uint16(byteOne) | (uint16(byteTwo))<<8
+}
+
 func (c *Cpu) getByte(address uint16) byte {
 	if address < 0x2000 {
 		return c.ram.GetByte(address)
@@ -124,6 +126,15 @@ func (c *Cpu) getByte(address uint16) byte {
 
 	if address >= 0x2000 && address < 0x4000 {
 		address &= 0x2007
+
+		switch address {
+		case 0x2002:
+			return c.b.ReadByCPU(address)
+		case 0x2004:
+			return c.b.ReadByCPU(address)
+		case 0x2007:
+			return c.b.ReadByCPU(address)
+		}
 	}
 
 	return c.mapper.GetByte(address)
@@ -132,13 +143,6 @@ func (c *Cpu) getByte(address uint16) byte {
 func (c *Cpu) getUin16(address uint16) uint16 {
 	byteOne := c.getByte(address)
 	byteTwo := c.getByte(address + 1)
-
-	return uint16(byteOne) | (uint16(byteTwo))<<8
-}
-
-func (c *Cpu) getNextUint16() uint16 {
-	byteOne := c.getNextByte()
-	byteTwo := c.getNextByte()
 
 	return uint16(byteOne) | (uint16(byteTwo))<<8
 }
@@ -155,25 +159,25 @@ func (c *Cpu) setByte(address uint16, value byte) {
 
 		switch address {
 		case 0x2000:
-			c.b.PushEvent(bus.Write2000)
+			c.b.WriteByCPU(address, value)
 			break
 		case 0x2001:
-			c.b.PushEvent(bus.Write2001)
+			c.b.WriteByCPU(address, value)
 			break
 		case 0x2003:
-			c.b.PushEvent(bus.Write2003)
+			c.b.WriteByCPU(address, value)
 			break
 		case 0x2004:
-			c.b.PushEvent(bus.Write2004)
+			c.b.WriteByCPU(address, value)
 			break
 		case 0x2005:
-			c.b.PushEvent(bus.Write2005)
+			c.b.WriteByCPU(address, value)
 			break
 		case 0x2006:
-			c.b.PushEvent(bus.Write2006)
+			c.b.WriteByCPU(address, value)
 			break
 		case 0x2007:
-			c.b.PushEvent(bus.Write2007)
+			c.b.WriteByCPU(address, value)
 			break
 		}
 		return
@@ -181,7 +185,7 @@ func (c *Cpu) setByte(address uint16, value byte) {
 
 	if address == 0x4014 {
 		c.mapper.PutByte(address, value)
-		c.b.PushEvent(bus.Write4014)
+		c.b.WriteByCPU(address, value)
 		return
 	}
 

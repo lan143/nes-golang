@@ -27,10 +27,6 @@ func (n *INes) GetChrRomSize() uint8 {
 }
 
 func (n *INes) GetMirroringType() enum.MirroringType {
-	if n.flags6&0x8 > 0 {
-		return enum.FourScreen
-	}
-
 	if n.flags6&0x1 > 0 {
 		return enum.Vertical
 	} else {
@@ -72,6 +68,7 @@ func (n *INes) GetData() []byte {
 func (n *INes) loadHeader(file *os.File) error {
 	header := make([]byte, 0x10)
 
+	file.Seek(0, 0)
 	_, err := file.Read(header)
 	if err != nil {
 		return err

@@ -47,7 +47,7 @@ type PPU struct {
 	patternTableHighLatch   byte
 
 	fineXScroll         uint16
-	currentVRamAddress  uint16
+	currentVRamAddress  registers.Uint16Register
 	temporalVRamAddress uint16
 
 	vRamReadBuffer     byte
@@ -75,7 +75,7 @@ func (p *PPU) Init(mapper mapper.Mapper, display display.Display, cpuRam *ram.Ra
 	p.patternTableLowLatch = 0
 	p.patternTableHighLatch = 0
 	p.fineXScroll = 0
-	p.currentVRamAddress = 0
+	p.currentVRamAddress.Set(0)
 	p.temporalVRamAddress = 0
 	p.vRamReadBuffer = 0
 	p.registerFirstStore = true
@@ -90,58 +90,54 @@ func (p *PPU) Init(mapper mapper.Mapper, display display.Display, cpuRam *ram.Ra
 	p.spritesManager.Init(p.oamRam[:])
 	p.spritesManager2.Init(p.oamRam2[:])
 
-	p.bus.Subscribe(bus.Write2000, func() {
-		p.ppuCtrl.SetValue(p.mapper.GetByte(0x2000))
+	p.bus.OnCPUWrite(0x2000, func(value byte) {
+		p.ppuCtrl.SetValue(value)
 
 		p.temporalVRamAddress &= ^uint16(0xC00)
 		p.temporalVRamAddress |= (uint16(p.ppuCtrl.GetValue()) & 0x3) << 10
 	})
-	p.bus.Subscribe(bus.Write2001, func() {
-		p.ppuMask.SetValue(p.mapper.GetByte(0x2001))
+	p.bus.OnCPUWrite(0x2001, func(value byte) {
+		p.ppuMask.SetValue(value)
 	})
-	p.bus.Subscribe(bus.Write2003, func() {
-		p.oamAddr = p.mapper.GetByte(0x2003)
+	p.bus.OnCPUWrite(0x2003, func(value byte) {
+		p.oamAddr = value
 	})
-	p.bus.Subscribe(bus.Write2004, func() {
-		p.oamData = p.mapper.GetByte(0x2004)
-		p.oamRam[p.oamAddr] = p.mapper.GetByte(0x2004)
+	p.bus.OnCPUWrite(0x2004, func(value byte) {
+		p.oamData = value
+		p.oamRam[p.oamAddr] = value
 		p.oamAddr++
 	})
-	p.bus.Subscribe(bus.Write2005, func() {
-		p.ppuScroll = p.mapper.GetByte(0x2005)
+	p.bus.OnCPUWrite(0x2005, func(value byte) {
+		p.ppuScroll = value
 
 		if p.registerFirstStore {
 			p.fineXScroll = uint16(p.ppuScroll) & 0x7
 			p.temporalVRamAddress &= ^uint16(0x1F)
-			p.temporalVRamAddress |= (uint16(p.mapper.GetByte(0x2005)) >> 3) & 0x1F
+			p.temporalVRamAddress |= (uint16(value) >> 3) & 0x1F
 		} else {
 			p.temporalVRamAddress &= ^uint16(0x73E0)
-			p.temporalVRamAddress |= (uint16(p.mapper.GetByte(0x2005)) & 0xF8) << 2
-			p.temporalVRamAddress |= (uint16(p.mapper.GetByte(0x2005)) & 0x7) << 12
+			p.temporalVRamAddress |= (uint16(value) & 0xF8) << 2
+			p.temporalVRamAddress |= (uint16(value) & 0x7) << 12
 		}
 
 		p.registerFirstStore = !p.registerFirstStore
 	})
-	p.bus.Subscribe(bus.Write2006, func() {
-		value := p.mapper.GetByte(0x2006)
-
+	p.bus.OnCPUWrite(0x2006, func(value byte) {
 		if p.registerFirstStore {
 			p.temporalVRamAddress &= ^uint16(0x7F00)
 			p.temporalVRamAddress |= (uint16(value) & 0x3F) << 8
-			//p.temporalVRamAddress = uint16(value) << 8
 		} else {
 			p.ppuAddr = value
 			p.temporalVRamAddress &= ^uint16(0xFF)
 			p.temporalVRamAddress |= uint16(value) & 0xFF
-			//p.temporalVRamAddress |= uint16(value)
-			p.currentVRamAddress = p.temporalVRamAddress
+			p.currentVRamAddress.Set(p.temporalVRamAddress)
 		}
 
 		p.registerFirstStore = !p.registerFirstStore
 	})
-	p.bus.Subscribe(bus.Write2007, func() {
-		p.ppuData = p.mapper.GetByte(0x2007)
-		p.store(p.currentVRamAddress, p.ppuData)
+	p.bus.OnCPUWrite(0x2007, func(value byte) {
+		p.ppuData = value
+		p.setByte(p.currentVRamAddress.Get(), p.ppuData)
 
 		var incAddr uint16
 		if p.ppuCtrl.IsIncrementAddress() {
@@ -150,12 +146,12 @@ func (p *PPU) Init(mapper mapper.Mapper, display display.Display, cpuRam *ram.Ra
 			incAddr = 1
 		}
 
-		p.currentVRamAddress += incAddr
-		p.currentVRamAddress &= 0x7FFF
-		p.ppuAddr = byte(p.currentVRamAddress) & 0xFF
+		p.currentVRamAddress.Set(p.currentVRamAddress.Get() + incAddr)
+		p.currentVRamAddress.Set(p.currentVRamAddress.Get() & 0x7FFF)
+		p.ppuAddr = byte(p.currentVRamAddress.Get()) & 0xFF
 	})
-	p.bus.Subscribe(bus.Write4014, func() {
-		p.oamDma = p.mapper.GetByte(0x4014)
+	p.bus.OnCPUWrite(0x4014, func(value byte) {
+		p.oamDma = value
 		offset := uint16(p.oamDma) * 0x100
 		var i uint16
 
@@ -163,14 +159,46 @@ func (p *PPU) Init(mapper mapper.Mapper, display display.Display, cpuRam *ram.Ra
 			p.oamRam[i] = p.cpuRam.GetByte(offset + i)
 		}
 	})
+	p.bus.OnCPURead(0x2002, func() byte {
+		value := p.ppuStatus.GetValue()
+		p.ppuStatus.ClearVBlank()
+		p.registerFirstStore = true
+
+		return value
+	})
+	p.bus.OnCPURead(0x2004, func() byte {
+		return p.oamRam[p.oamAddr]
+	})
+	p.bus.OnCPURead(0x2007, func() byte {
+		var value byte
+		var incAddr uint16
+
+		if (p.currentVRamAddress.Get() & 0x3FFF) < 0x3F00 {
+			value = p.vRamReadBuffer
+			p.vRamReadBuffer = p.getByte(p.currentVRamAddress.Get())
+		} else {
+			value = p.getByte(p.currentVRamAddress.Get())
+			p.vRamReadBuffer = value
+		}
+
+		if p.ppuCtrl.IsIncrementAddress() {
+			incAddr = 32
+		} else {
+			incAddr = 1
+		}
+
+		p.currentVRamAddress.Set(p.currentVRamAddress.Get() + incAddr)
+		p.currentVRamAddress.Set(p.currentVRamAddress.Get() & 0x7FFF)
+		p.ppuAddr = byte(p.currentVRamAddress.Get() & 0xFF)
+
+		return value
+	})
+
+	p.ppuStatus.SetVBlank()
 }
 
 func (p *PPU) Run() {
-	p.ppuStatus.SetVBlank()
-
-	for {
-		p.runCycle()
-	}
+	p.runCycle()
 }
 
 func (p *PPU) runCycle() {
@@ -208,8 +236,8 @@ func (p *PPU) countUpScrollCounters() {
 
 	if p.scanline == 261 {
 		if p.cycle >= 280 && p.cycle <= 304 {
-			p.currentVRamAddress &= ^uint16(0x7BE0)
-			p.currentVRamAddress |= p.temporalVRamAddress & 0x7BE0
+			p.currentVRamAddress.Set(p.currentVRamAddress.Get() & ^uint16(0x7BE0))
+			p.currentVRamAddress.Set(p.currentVRamAddress.Get() | p.temporalVRamAddress&0x7BE0)
 		}
 	}
 
@@ -218,7 +246,7 @@ func (p *PPU) countUpScrollCounters() {
 	}
 
 	if (p.cycle % 8) == 0 {
-		var v = p.currentVRamAddress
+		var v = p.currentVRamAddress.Get()
 
 		if (v & 0x1F) == 31 {
 			v &= ^uint16(0x1F)
@@ -227,17 +255,17 @@ func (p *PPU) countUpScrollCounters() {
 			v++
 		}
 
-		p.currentVRamAddress = v
+		p.currentVRamAddress.Set(v)
 	}
 
 	if p.cycle == 256 {
-		var v = p.currentVRamAddress
+		v := p.currentVRamAddress.Get()
 
 		if (v & 0x7000) != 0x7000 {
 			v += 0x1000
 		} else {
 			v &= ^uint16(0x7000)
-			var y = (v & 0x3E0) >> 5
+			y := (v & 0x3E0) >> 5
 
 			if y == 29 {
 				y = 0
@@ -251,12 +279,12 @@ func (p *PPU) countUpScrollCounters() {
 			v = (v & ^uint16(0x3E0)) | (y << 5)
 		}
 
-		p.currentVRamAddress = v
+		p.currentVRamAddress.Set(v)
 	}
 
 	if p.cycle == 257 {
-		p.currentVRamAddress &= ^uint16(0x41F)
-		p.currentVRamAddress |= p.temporalVRamAddress & 0x41F
+		p.currentVRamAddress.Set(p.currentVRamAddress.Get() & ^uint16(0x41F))
+		p.currentVRamAddress.Set(p.currentVRamAddress.Get() | (p.temporalVRamAddress & 0x41F))
 	}
 }
 
@@ -275,7 +303,7 @@ func (p *PPU) updateFlags() {
 	if p.cycle == 10 {
 		if p.scanline == 241 {
 			if p.ppuCtrl.IsNMIVBlank() {
-				p.bus.PushEvent(bus.NMIInterrupt)
+				p.bus.Interrupt(bus.NMI)
 			}
 		}
 	}
@@ -394,7 +422,7 @@ func (p *PPU) processSpritePixels() {
 				pIndex := (msb << 2) | lsb
 
 				if p.spritePixels[x] == 0x80000000 {
-					p.spritePixels[x] = p.palette.GetValue(p.load(0x3F10 + uint16(pIndex)))
+					p.spritePixels[x] = p.palette.GetValue(p.getByte(0x3F10 + uint16(pIndex)))
 					p.spriteIds[x] = uint32(s.GetId())
 					p.spritePriorities[x] = uint32(s.GetPriority())
 				}
@@ -416,12 +444,12 @@ func (p *PPU) getPatternTableElement(index, x, y, ySize uint16) byte {
 			offset = 0
 		}
 
-		a = p.load(offset + index*0x10 + ay)
-		b = p.load(offset + index*0x10 + 0x8 + ay)
+		a = p.getByte(offset + index*0x10 + ay)
+		b = p.getByte(offset + index*0x10 + 0x8 + ay)
 	} else {
 		ay += (y >> 3) * 0x10
-		a = p.load(index + ay)
-		b = p.load(index + ay + 0x8)
+		a = p.getByte(index + ay)
+		b = p.getByte(index + ay + 0x8)
 	}
 
 	return ((a >> (7 - ax)) & 1) | (((b >> (7 - ax)) & 1) << 1)
@@ -467,14 +495,14 @@ func (p *PPU) fetch() {
 }
 
 func (p *PPU) fetchNameTable() {
-	p.nameTableLatch = p.load(0x2000 | (p.currentVRamAddress & 0x0FFF))
+	p.nameTableLatch = p.getByte(0x2000 | (p.currentVRamAddress.Get() & 0x0FFF))
 }
 
 func (p *PPU) fetchAttributeTable() {
-	v := p.currentVRamAddress
+	v := p.currentVRamAddress.Get()
 	address := 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07)
 
-	b := p.load(address)
+	b := p.getByte(address)
 
 	coarseX := v & 0x1F
 	coarseY := (v >> 5) & 0x1
@@ -512,19 +540,19 @@ func (p *PPU) fetchAttributeTable() {
 }
 
 func (p *PPU) fetchPatternTableLow() {
-	fineY := (p.currentVRamAddress >> 12) & 0x7
+	fineY := (p.currentVRamAddress.Get() >> 12) & 0x7
 	index := uint16(p.ppuCtrl.GetBackgroundPatternTable())*0x1000 +
 		uint16(p.nameTableRegister*0x10) + fineY
 
-	p.patternTableLowLatch = p.load(index)
+	p.patternTableLowLatch = p.getByte(index)
 }
 
 func (p *PPU) fetchPatternTableHigh() {
-	fineY := (p.currentVRamAddress >> 12) & 0x7
+	fineY := (p.currentVRamAddress.Get() >> 12) & 0x7
 	var index = uint16(p.ppuCtrl.GetBackgroundPatternTable())*0x1000 +
 		uint16(p.nameTableRegister)*0x10 + fineY
 
-	p.patternTableHighLatch = p.load(index + 0x8)
+	p.patternTableHighLatch = p.getByte(index + 0x8)
 }
 
 func (p *PPU) shiftRegisters() {
@@ -588,7 +616,7 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 	return baseAddress | (address & 0x3FF)
 }
 
-func (p *PPU) store(address uint16, value byte) {
+func (p *PPU) setByte(address uint16, value byte) {
 	// 0x0000 - 0x1FFF is mapped with cartridge's CHR-ROM if it exists
 	if address < 0x2000 && p.mapper.HasChrRom() {
 		p.mapper.PutChrByte(address, value)
@@ -637,7 +665,7 @@ func (p *PPU) store(address uint16, value byte) {
 	p.vRam[address] = value
 }
 
-func (p *PPU) load(address uint16) byte {
+func (p *PPU) getByte(address uint16) byte {
 	// 0x0000 - 0x1FFF is mapped with cartridge's CHR-ROM if it exists
 	if address < 0x2000 && p.mapper.HasChrRom() {
 		return p.mapper.GetChrByte(address)
@@ -685,17 +713,22 @@ func (p *PPU) load(address uint16) byte {
 func (p *PPU) getBackgroundPixel() uint32 {
 	offset := 15 - p.fineXScroll
 
-	lsb := (p.patternTableHighRegister.GetValue() & offset << 1) |
-		p.patternTableLowRegister.GetValue()&offset
-	msb := (p.attributeTableHighRegister.GetValue() & offset << 1) |
-		p.attributeTableLowRegister.GetValue()&offset
+	lsb := (p.patternTableHighRegister.Get() & offset << 1) |
+		p.patternTableLowRegister.Get()&offset
+	msb := (p.attributeTableHighRegister.Get() & offset << 1) |
+		p.attributeTableLowRegister.Get()&offset
 	index := (msb << 2) | lsb
 
 	if p.ppuMask.IsGreyscale() {
 		index = index & 0x30
 	}
 
-	return p.palette.GetValue(p.load(0x3F00 + index))
+	color := p.getByte(0x3F00 + index)
+	if color <= 0x3f {
+		return p.palette.GetValue(color)
+	}
+
+	return p.palette.GetValue(0)
 }
 
 func (p *PPU) renderPixel() {
@@ -714,7 +747,13 @@ func (p *PPU) renderPixel() {
 	spriteId := p.spriteIds[x]
 	spritePriority := p.spritePriorities[x]
 
-	c := p.palette.GetValue(p.load(0x3F00))
+	color := p.getByte(0x3F00)
+	var c uint32
+	if color <= 0x3f {
+		c = p.palette.GetValue(color)
+	} else {
+		c = p.palette.GetValue(0)
+	}
 
 	if backgroundVisible && spritesVisible {
 		if spritePixel == 0x80000000 {

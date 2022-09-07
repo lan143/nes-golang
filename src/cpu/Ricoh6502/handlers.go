@@ -135,7 +135,14 @@ type JMPHandler struct {
 }
 
 func (h *JMPHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
-	cpu.PC = operand
+	if mode == enums.ModeIND {
+		addr1 := operand
+		addr2 := (operand & 0xff00) | ((operand + 1) & 0xff)
+
+		cpu.PC = uint16(cpu.getByte(addr1)) | (uint16(cpu.getByte(addr2)) << 8)
+	} else {
+		cpu.PC = operand
+	}
 
 	return nil
 }
