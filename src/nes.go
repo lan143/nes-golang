@@ -66,13 +66,16 @@ func (n *Nes) Init() error {
 
 func (n *Nes) Run(ctx context.Context) {
 	// @todo: use wait group, run all in goroutines, process signals from OS...
+	var i byte
+
 	go func() {
-		//timer := time.NewTimer(time.Second / 600000)
 		for {
-			//<-timer.C
-			//timer.Reset(time.Second / 600000)
 			n.cpu.Run()
-			n.ppu.Run()
+
+			// 1 CPU cycle = 3 PPU cycles
+			for i = 0; i < 3; i++ {
+				n.ppu.Run()
+			}
 		}
 	}()
 

@@ -184,7 +184,6 @@ func (c *Cpu) setByte(address uint16, value byte) {
 	}
 
 	if address == 0x4014 {
-		c.mapper.PutByte(address, value)
 		c.b.WriteByCPU(address, value)
 		return
 	}

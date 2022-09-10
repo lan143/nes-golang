@@ -35,10 +35,10 @@ type PPU struct {
 	oamDma    byte                        // 0x4014
 
 	nameTableRegister          byte
-	attributeTableLowRegister  registers.Uint16Register
-	attributeTableHighRegister registers.Uint16Register
-	patternTableLowRegister    registers.Uint16Register
-	patternTableHighRegister   registers.Uint16Register
+	attributeTableLowRegister  registers.Register[uint16]
+	attributeTableHighRegister registers.Register[uint16]
+	patternTableLowRegister    registers.Register[uint16]
+	patternTableHighRegister   registers.Register[uint16]
 
 	nameTableLatch          byte
 	attributeTableLowLatch  byte
@@ -47,7 +47,7 @@ type PPU struct {
 	patternTableHighLatch   byte
 
 	fineXScroll         uint16
-	currentVRamAddress  registers.Uint16Register
+	currentVRamAddress  registers.Register[uint16]
 	temporalVRamAddress uint16
 
 	vRamReadBuffer     byte
@@ -187,8 +187,7 @@ func (p *PPU) Init(mapper mapper.Mapper, display display.Display, cpuRam *ram.Ra
 			incAddr = 1
 		}
 
-		p.currentVRamAddress.Set(p.currentVRamAddress.Get() + incAddr)
-		p.currentVRamAddress.Set(p.currentVRamAddress.Get() & 0x7FFF)
+		p.currentVRamAddress.Set((p.currentVRamAddress.Get() + incAddr) & 0x7FFF)
 		p.ppuAddr = byte(p.currentVRamAddress.Get() & 0xFF)
 
 		return value
@@ -487,10 +486,10 @@ func (p *PPU) fetch() {
 
 	if p.cycle%8 == 1 {
 		p.nameTableRegister = p.nameTableLatch
-		p.attributeTableLowRegister.StoreLowerByte(p.attributeTableLowLatch)
-		p.attributeTableHighRegister.StoreLowerByte(p.attributeTableHighLatch)
-		p.patternTableLowRegister.StoreLowerByte(p.patternTableLowLatch)
-		p.patternTableHighRegister.StoreLowerByte(p.patternTableHighLatch)
+		p.attributeTableLowRegister.SetLowerByte(p.attributeTableLowLatch)
+		p.attributeTableHighRegister.SetLowerByte(p.attributeTableHighLatch)
+		p.patternTableLowRegister.SetLowerByte(p.patternTableLowLatch)
+		p.patternTableHighRegister.SetLowerByte(p.patternTableHighLatch)
 	}
 }
 
@@ -505,7 +504,7 @@ func (p *PPU) fetchAttributeTable() {
 	b := p.getByte(address)
 
 	coarseX := v & 0x1F
-	coarseY := (v >> 5) & 0x1
+	coarseY := (v >> 5) & 0x1F
 
 	var topBottom, rightLeft byte
 	if (coarseY % 4) >= 2 { // bottom, top
@@ -549,7 +548,7 @@ func (p *PPU) fetchPatternTableLow() {
 
 func (p *PPU) fetchPatternTableHigh() {
 	fineY := (p.currentVRamAddress.Get() >> 12) & 0x7
-	var index = uint16(p.ppuCtrl.GetBackgroundPatternTable())*0x1000 +
+	index := uint16(p.ppuCtrl.GetBackgroundPatternTable())*0x1000 +
 		uint16(p.nameTableRegister)*0x10 + fineY
 
 	p.patternTableHighLatch = p.getByte(index + 0x8)
@@ -560,8 +559,7 @@ func (p *PPU) shiftRegisters() {
 		return
 	}
 
-	if (p.cycle >= 1 && p.cycle <= 256) ||
-		(p.cycle >= 329 && p.cycle <= 336) {
+	if (p.cycle >= 1 && p.cycle <= 256) || (p.cycle >= 329 && p.cycle <= 336) {
 		p.patternTableLowRegister.Shift(0)
 		p.patternTableHighRegister.Shift(0)
 		p.attributeTableLowRegister.Shift(0)
@@ -711,24 +709,21 @@ func (p *PPU) getByte(address uint16) byte {
 }
 
 func (p *PPU) getBackgroundPixel() uint32 {
-	offset := 15 - p.fineXScroll
+	offset := byte(15 - p.fineXScroll)
 
-	lsb := (p.patternTableHighRegister.Get() & offset << 1) |
-		p.patternTableLowRegister.Get()&offset
-	msb := (p.attributeTableHighRegister.Get() & offset << 1) |
-		p.attributeTableLowRegister.Get()&offset
+	lsb := (p.patternTableHighRegister.LoadBit(offset) << 1) |
+		p.patternTableLowRegister.LoadBit(offset)
+	msb := (p.attributeTableHighRegister.LoadBit(offset) << 1) |
+		p.attributeTableLowRegister.LoadBit(offset)
 	index := (msb << 2) | lsb
 
 	if p.ppuMask.IsGreyscale() {
 		index = index & 0x30
 	}
 
-	color := p.getByte(0x3F00 + index)
-	if color <= 0x3f {
-		return p.palette.GetValue(color)
-	}
+	color := p.getByte(0x3F00 + uint16(index))
 
-	return p.palette.GetValue(0)
+	return p.palette.GetValue(color)
 }
 
 func (p *PPU) renderPixel() {
