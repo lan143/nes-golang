@@ -541,7 +541,7 @@ func (p *PPU) fetchAttributeTable() {
 func (p *PPU) fetchPatternTableLow() {
 	fineY := (p.currentVRamAddress.Get() >> 12) & 0x7
 	index := uint16(p.ppuCtrl.GetBackgroundPatternTable())*0x1000 +
-		uint16(p.nameTableRegister*0x10) + fineY
+		uint16(p.nameTableRegister)*0x10 + fineY
 
 	p.patternTableLowLatch = p.getByte(index)
 }
