@@ -30,7 +30,7 @@ func (c *Cpu) logExecution(position uint16, opcode string, mode enums.Modes, ope
 		log.Printf("(0x%04X) (ZPY) %s $%04X,X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeINDX:
-		log.Printf("(0x%04X) (INDX) %s $%02X,X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
+		log.Printf("(0x%04X) (INDX) %s ($%02X,X)	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeINDY:
 		log.Printf("(0x%04X) (INDY) %s $%04X,Y	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
@@ -108,9 +108,9 @@ func (c *Cpu) loadWithMemoryAccessType(mode enums.Modes, operand uint16) (byte, 
 	case enums.ModeINDX:
 		address := (operand + uint16(c.X)) & 0xff
 
-		return c.getByte(c.getUin16(address)), nil
+		return c.getByte(c.getUint16FromZeroPage(address)), nil
 	case enums.ModeINDY:
-		address := c.getUin16(operand)
+		address := c.getUint16FromZeroPage(operand)
 		address += uint16(c.Y)
 
 		return c.getByte(address), nil
@@ -146,10 +146,10 @@ func (c *Cpu) writeWithMemoryAccessType(mode enums.Modes, operand uint16, value 
 		break
 	case enums.ModeINDX:
 		address := (operand + uint16(c.X)) & 0xff
-		c.setByte(c.getUin16(address), value)
+		c.setByte(c.getUint16FromZeroPage(address), value)
 		break
 	case enums.ModeINDY:
-		address := c.getUin16(operand)
+		address := c.getUint16FromZeroPage(operand)
 		address += uint16(c.Y)
 
 		c.setByte(address, value)

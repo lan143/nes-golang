@@ -145,9 +145,16 @@ func (c *Cpu) getByte(address uint16) byte {
 	return c.mapper.GetByte(address)
 }
 
-func (c *Cpu) getUin16(address uint16) uint16 {
+func (c *Cpu) getUint16(address uint16) uint16 {
 	byteOne := c.getByte(address)
 	byteTwo := c.getByte(address + 1)
+
+	return uint16(byteOne) | (uint16(byteTwo))<<8
+}
+
+func (c *Cpu) getUint16FromZeroPage(address uint16) uint16 {
+	byteOne := c.getByte(address & 0xff)
+	byteTwo := c.getByte((address + 1) & 0xff)
 
 	return uint16(byteOne) | (uint16(byteTwo))<<8
 }

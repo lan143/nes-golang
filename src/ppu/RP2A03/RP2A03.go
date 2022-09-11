@@ -705,7 +705,11 @@ func (p *PPU) getByte(address uint16) byte {
 		address = 0x3F0C
 	}
 
-	return p.vRam[address]
+	if address < uint16(len(p.vRam)) {
+		return p.vRam[address]
+	}
+
+	return 0
 }
 
 func (p *PPU) getBackgroundPixel() uint32 {
