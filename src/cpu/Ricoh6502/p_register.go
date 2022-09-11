@@ -18,7 +18,7 @@ type PRegister struct {
 }
 
 func (p *PRegister) Init() {
-	p.value = 0x20
+	p.value = 0x24
 }
 
 func (p *PRegister) GetValue() byte {
@@ -26,6 +26,7 @@ func (p *PRegister) GetValue() byte {
 }
 
 func (p *PRegister) SetValue(value byte) {
+	value |= 0x20
 	p.value = value
 }
 
@@ -122,7 +123,7 @@ func (p *PRegister) UpdateN(value byte) {
 }
 
 func (p *PRegister) UpdateZ(value byte) {
-	if (value & 0xff) == 0 {
+	if value&0xFF == 0 {
 		p.SetZ()
 	} else {
 		p.ClearZ()

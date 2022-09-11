@@ -43,7 +43,7 @@ func (m *NROMMapper) LoadRom(rom rom.Rom) {
 	j++
 
 	// Chr ROM
-	for i = 0x0000; i <= 0x1FFF; i++ {
+	for i = 0x0000; i < (0x1000 * uint16(m.rom.GetChrRomSize()+1)); i++ {
 		m.chrRom[i] = data[j]
 		j++
 	}

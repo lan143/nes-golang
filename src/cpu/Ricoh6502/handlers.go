@@ -40,8 +40,8 @@ func (h *ASLHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
 	}
 
 	cpu.PC++
-	cpu.P.UpdateN(value)
-	cpu.P.UpdateZ(value)
+	cpu.P.UpdateN(byte(twoByteValue))
+	cpu.P.UpdateZ(byte(twoByteValue))
 	cpu.P.UpdateC(twoByteValue)
 
 	return nil
@@ -53,7 +53,7 @@ type BPLHandler struct {
 func (h *BPLHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
 	value := int8(operand)
 
-	if cpu.P.IsN() {
+	if !cpu.P.IsN() {
 		if value > 0 {
 			cpu.PC -= uint16(-value)
 		} else {
@@ -347,6 +347,8 @@ type TYAHandler struct {
 
 func (h *TYAHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
 	cpu.A = cpu.Y
+	cpu.P.UpdateN(cpu.A)
+	cpu.P.UpdateZ(cpu.A)
 	cpu.PC++
 
 	return nil
@@ -362,6 +364,9 @@ func (h *LDXHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
 	}
 
 	cpu.X = value
+	cpu.P.UpdateZ(cpu.X)
+	cpu.P.UpdateN(cpu.X)
+
 	cpu.PC++
 
 	return nil
@@ -506,12 +511,11 @@ type BITHandler struct {
 func (h *BITHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
 	src1 := cpu.A
 	src2, err := cpu.loadWithMemoryAccessType(mode, operand)
-	result := src1 & src2
-
-	err = cpu.writeWithMemoryAccessType(mode, operand, result)
 	if err != nil {
 		return err
 	}
+
+	result := src1 & src2
 
 	cpu.P.UpdateN(src2)
 	cpu.P.UpdateZ(result)
@@ -873,8 +877,16 @@ type PLPHandler struct {
 }
 
 func (h *PLPHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
-	cpu.P.SetValue(cpu.S.PopByte())
+	val := cpu.S.PopByte()
+	if cpu.P.IsB() {
+		val |= 0x10
+	} else {
+		val &= ^byte(0x10)
+	}
 
+	val |= 0x20
+
+	cpu.P.SetValue(val)
 	cpu.PC++
 
 	return nil
@@ -905,12 +917,7 @@ func (h *ROLHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
 
 	cpu.P.UpdateN(byte(result))
 	cpu.P.UpdateZ(byte(result))
-
-	if result&0x100 == 0 {
-		cpu.P.SetC()
-	} else {
-		cpu.P.ClearC()
-	}
+	cpu.P.UpdateC(result)
 
 	cpu.PC++
 

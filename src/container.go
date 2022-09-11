@@ -5,6 +5,7 @@ import (
 	"main/src/bus"
 	"main/src/cpu"
 	"main/src/display"
+	"main/src/joypad"
 	"main/src/mapper"
 	"main/src/ppu"
 	"main/src/rom"
@@ -20,6 +21,7 @@ func BuildContainer() *dig.Container {
 	processError(container.Provide(cpu.NewFactory))
 	processError(container.Provide(ppu.NewFactory))
 	processError(container.Provide(display.NewFactory))
+	processError(container.Provide(joypad.NewJoyPad))
 
 	return container
 }

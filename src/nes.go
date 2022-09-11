@@ -5,6 +5,7 @@ import (
 	"main/src/bus"
 	"main/src/cpu"
 	"main/src/display"
+	"main/src/joypad"
 	"main/src/mapper"
 	"main/src/mapper/enum"
 	"main/src/ppu"
@@ -25,6 +26,7 @@ type Nes struct {
 	cpu     cpu.CPU
 	ppu     ppu.PPU
 	display display.Display
+	joypad  *joypad.JoyPad
 }
 
 func (n *Nes) Init() error {
@@ -48,6 +50,8 @@ func (n *Nes) Init() error {
 	}
 
 	m.LoadRom(r)
+
+	n.joypad.Init()
 
 	n.display = n.displayFactory.GetDisplay()
 	n.display.Init()
@@ -73,7 +77,7 @@ func (n *Nes) Run(ctx context.Context) {
 			n.cpu.Run()
 
 			// 1 CPU cycle = 3 PPU cycles
-			for i = 0; i < 3; i++ {
+			for i = 0; i < 6; i++ {
 				n.ppu.Run()
 			}
 		}
@@ -89,6 +93,7 @@ func NewNes(
 	cpuFactory *cpu.Factory,
 	ppuFactory *ppu.Factory,
 	displayFactory *display.Factory,
+	joypad *joypad.JoyPad,
 ) *Nes {
 	return &Nes{
 		bus:            bus,
@@ -97,5 +102,6 @@ func NewNes(
 		cpuFactory:     cpuFactory,
 		ppuFactory:     ppuFactory,
 		displayFactory: displayFactory,
+		joypad:         joypad,
 	}
 }

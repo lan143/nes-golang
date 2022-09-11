@@ -5,6 +5,10 @@ type Palette struct {
 }
 
 func (p *Palette) GetValue(index byte) uint32 {
+	if index >= byte(len(p.value)) {
+		return p.value[0]
+	}
+
 	return p.value[index]
 }
 

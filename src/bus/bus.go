@@ -6,10 +6,24 @@ const (
 	NMI Interrupt = 1
 )
 
+type JoyPadButton byte
+
+const (
+	JoyPadButtonUp     JoyPadButton = 1
+	JoyPadButtonDown                = 2
+	JoyPadButtonLeft                = 3
+	JoyPadButtonRight               = 4
+	JoyPadButtonA                   = 5
+	JoyPadButtonB                   = 6
+	JoyPadButtonSelect              = 7
+	JoyPadButtonStart               = 8
+)
+
 type Bus struct {
 	cpuWrites  map[uint16]func(value byte)
 	cpuReads   map[uint16]func() byte
 	interrupts map[Interrupt]func()
+	keyEvent   func(button JoyPadButton, pressed bool)
 }
 
 func (b *Bus) Init() {
@@ -48,6 +62,16 @@ func (b *Bus) Interrupt(interrupt Interrupt) {
 
 func (b *Bus) OnInterrupt(interrupt Interrupt, fn func()) {
 	b.interrupts[interrupt] = fn
+}
+
+func (b *Bus) KeyEvent(button JoyPadButton, pressed bool) {
+	if b.keyEvent != nil {
+		b.keyEvent(button, pressed)
+	}
+}
+
+func (b *Bus) OnKeyEvent(fn func(button JoyPadButton, pressed bool)) {
+	b.keyEvent = fn
 }
 
 func NewBus() *Bus {

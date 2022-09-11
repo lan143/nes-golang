@@ -9,43 +9,43 @@ import (
 func (c *Cpu) logExecution(position uint16, opcode string, mode enums.Modes, operand uint16) {
 	switch mode {
 	case enums.ModeREL:
-		log.Printf("(0x%04X) (REL) %s %04X", position, opcode, int8(operand))
+		log.Printf("(0x%04X) (REL) %s %04X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, int8(operand), c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeIND:
-		log.Printf("(0x%04X) (IND) %s $%04X", position, opcode, operand)
+		log.Printf("(0x%04X) (IND) %s $%04X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeIMM:
-		log.Printf("(0x%04X) (IMM) %s #%04X", position, opcode, operand)
+		log.Printf("(0x%04X) (IMM) %s #%04X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeAcc:
-		log.Printf("(0x%04X) %s A", position, opcode)
+		log.Printf("(0x%04X) %s A	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeZP:
-		log.Printf("(0x%04X) (ZP) %s $%04X", position, opcode, operand)
+		log.Printf("(0x%04X) (ZP) %s $%04X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeZPX:
-		log.Printf("(0x%04X) (ZPX) %s $%04X,X", position, opcode, operand)
+		log.Printf("(0x%04X) (ZPX) %s $%04X,X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeZPY:
-		log.Printf("(0x%04X) (ZPY) %s $%04X,X", position, opcode, operand)
+		log.Printf("(0x%04X) (ZPY) %s $%04X,X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeINDX:
-		log.Printf("(0x%04X) (INDX) %s $%04X,X", position, opcode, operand)
+		log.Printf("(0x%04X) (INDX) %s $%02X,X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeINDY:
-		log.Printf("(0x%04X) (INDY) %s $%04X,Y", position, opcode, operand)
+		log.Printf("(0x%04X) (INDY) %s $%04X,Y	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeABS:
-		log.Printf("(0x%04X) (ABS) %s $%04X", position, opcode, operand)
+		log.Printf("(0x%04X) (ABS) %s $%04X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeABSX:
-		log.Printf("(0x%04X) (ABSX) %s $%04X,X", position, opcode, operand)
+		log.Printf("(0x%04X) (ABSX) %s $%04X,X	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeABSY:
-		log.Printf("(0x%04X) (ABSY) %s $%04X,Y", position, opcode, operand)
+		log.Printf("(0x%04X) (ABSY) %s $%04X,Y	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, operand, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	case enums.ModeIMP:
-		log.Printf("(0x%04X) (IMP) %s", position, opcode)
+		log.Printf("(0x%04X) (IMP) %s	A:%02X X:%02X Y:%02X P:%02X SP:%02X", position, opcode, c.A, c.X, c.Y, c.P.GetValue(), c.S.value)
 		break
 	default:
 		log.Printf("(0x%04X) %s %04X", position, opcode, operand)
@@ -88,7 +88,7 @@ func (c *Cpu) loadInstructionOperand(mode enums.Modes) (uint16, error) {
 func (c *Cpu) loadWithMemoryAccessType(mode enums.Modes, operand uint16) (byte, error) {
 	switch mode {
 	case enums.ModeIMM:
-		return c.getByte(c.PC), nil
+		return byte(operand), nil
 	case enums.ModeIND:
 		return c.getByte(operand), nil
 	case enums.ModeAcc:
@@ -96,9 +96,9 @@ func (c *Cpu) loadWithMemoryAccessType(mode enums.Modes, operand uint16) (byte, 
 	case enums.ModeZP:
 		return c.getByte(operand), nil
 	case enums.ModeZPX:
-		return c.getByte(operand + uint16(c.X)), nil
+		return c.getByte((operand + uint16(c.X)) & 0xFF), nil
 	case enums.ModeZPY:
-		return c.getByte(operand + uint16(c.Y)), nil
+		return c.getByte((operand + uint16(c.Y)) & 0xFF), nil
 	case enums.ModeABS:
 		return c.getByte(operand), nil
 	case enums.ModeABSX:
@@ -111,8 +111,9 @@ func (c *Cpu) loadWithMemoryAccessType(mode enums.Modes, operand uint16) (byte, 
 		return c.getByte(c.getUin16(address)), nil
 	case enums.ModeINDY:
 		address := c.getUin16(operand)
+		address += uint16(c.Y)
 
-		return c.getByte(address + uint16(c.Y)), nil
+		return c.getByte(address), nil
 	case enums.ModeIMP:
 		return 0, nil
 	default:
@@ -129,10 +130,10 @@ func (c *Cpu) writeWithMemoryAccessType(mode enums.Modes, operand uint16, value 
 		c.setByte(operand, value)
 		break
 	case enums.ModeZPX:
-		c.setByte(operand+uint16(c.X), value)
+		c.setByte((operand+uint16(c.X))&0xFF, value)
 		break
 	case enums.ModeZPY:
-		c.setByte(operand+uint16(c.Y), value)
+		c.setByte((operand+uint16(c.Y))&0xFF, value)
 		break
 	case enums.ModeABS:
 		c.setByte(operand, value)
@@ -144,11 +145,14 @@ func (c *Cpu) writeWithMemoryAccessType(mode enums.Modes, operand uint16, value 
 		c.setByte(operand+uint16(c.Y), value)
 		break
 	case enums.ModeINDX:
-		c.setByte(operand+uint16(c.X), value)
+		address := (operand + uint16(c.X)) & 0xff
+		c.setByte(c.getUin16(address), value)
 		break
 	case enums.ModeINDY:
-		address := c.getByte(operand)
-		c.setByte(uint16(address)+uint16(c.Y), value)
+		address := c.getUin16(operand)
+		address += uint16(c.Y)
+
+		c.setByte(address, value)
 		break
 	default:
 		return fmt.Errorf("writeWithMemoryAccessType: unsupported %d memory access type", mode)

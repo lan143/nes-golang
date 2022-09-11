@@ -1,14 +1,20 @@
 package display
 
-import "main/src/display/pixelgl"
+import (
+	"main/src/bus"
+	"main/src/display/pixelgl"
+)
 
 type Factory struct {
+	bus *bus.Bus
 }
 
 func (f *Factory) GetDisplay() Display {
-	return pixelgl.NewDisplay()
+	return pixelgl.NewDisplay(f.bus)
 }
 
-func NewFactory() *Factory {
-	return &Factory{}
+func NewFactory(bus *bus.Bus) *Factory {
+	return &Factory{
+		bus: bus,
+	}
 }

@@ -44,6 +44,7 @@ func (c *Cpu) Init(mapper mapper.Mapper, ram *ram.Ram) {
 	c.S.Init(c.ram)
 
 	c.Reset()
+	//c.PC = 0xC000
 
 	c.b.OnInterrupt(bus.NMI, func() {
 		c.interruptMX.Lock()
@@ -137,6 +138,10 @@ func (c *Cpu) getByte(address uint16) byte {
 		}
 	}
 
+	if address == 0x4016 {
+		return c.b.ReadByCPU(address)
+	}
+
 	return c.mapper.GetByte(address)
 }
 
@@ -188,6 +193,11 @@ func (c *Cpu) setByte(address uint16, value byte) {
 		return
 	}
 
+	if address == 0x4016 {
+		c.b.WriteByCPU(address, value)
+		return
+	}
+
 	c.mapper.PutByte(address, value)
 }
 
@@ -213,7 +223,7 @@ func (c *Cpu) interrupt(handler InterruptHandler) {
 	address2 := c.getByte(uint16(handler) + 1)
 	c.PC = uint16(address1) | (uint16(address2))<<8
 
-	log.Printf("Interrupt: 0x%X. Address: 0x%X", handler, c.PC)
+	//log.Printf("Interrupt: 0x%X. Address: 0x%X", handler, c.PC)
 }
 
 func NewCPU(b *bus.Bus) *Cpu {
