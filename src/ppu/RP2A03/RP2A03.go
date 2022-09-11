@@ -689,20 +689,8 @@ func (p *PPU) getByte(address uint16) byte {
 	// Addresses for palette
 	// 0x3F10/0x3F14/0x3F18/0x3F1C are mirrors of
 	// 0x3F00/0x3F04/0x3F08/0x3F0C.
-	if address == 0x3F10 {
+	if address == 0x3F04 || address == 0x3F08 || address == 0x3F0C || address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C {
 		address = 0x3F00
-	}
-
-	if address == 0x3F14 {
-		address = 0x3F04
-	}
-
-	if address == 0x3F18 {
-		address = 0x3F08
-	}
-
-	if address == 0x3F1C {
-		address = 0x3F0C
 	}
 
 	if address < uint16(len(p.vRam)) {
@@ -725,7 +713,7 @@ func (p *PPU) getBackgroundPixel() uint32 {
 		index = index & 0x30
 	}
 
-	color := p.getByte(0x3F00 + uint16(index))
+	color := p.getByte(0x3F00 + index)
 
 	return p.palette.GetValue(color)
 }
