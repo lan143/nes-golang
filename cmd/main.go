@@ -8,7 +8,11 @@ import (
 func main() {
 	container := src.BuildContainer()
 	err := container.Invoke(func(nes *src.Nes) {
-		nes.Init()
+		err := nes.Init()
+		if err != nil {
+			panic(err)
+		}
+
 		nes.Run(context.Background())
 	})
 

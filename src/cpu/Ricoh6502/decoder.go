@@ -196,5 +196,12 @@ func (c *Decoder) InitCommands() {
 		{Command: 0x1B, OpcodeName: "SLO", Mode: enums.ModeABSY, Handler: &SLOHandler{}},
 		{Command: 0x03, OpcodeName: "SLO", Mode: enums.ModeINDX, Handler: &SLOHandler{}},
 		{Command: 0x13, OpcodeName: "SLO", Mode: enums.ModeINDY, Handler: &SLOHandler{}},
+		{Command: 0x47, OpcodeName: "SRE", Mode: enums.ModeZP, Handler: &SREHandler{}},
+		{Command: 0x57, OpcodeName: "SRE", Mode: enums.ModeZPX, Handler: &SREHandler{}},
+		{Command: 0x4F, OpcodeName: "SRE", Mode: enums.ModeABS, Handler: &SREHandler{}},
+		{Command: 0x5F, OpcodeName: "SRE", Mode: enums.ModeABSX, Handler: &SREHandler{}},
+		{Command: 0x5B, OpcodeName: "SRE", Mode: enums.ModeABSY, Handler: &SREHandler{}},
+		{Command: 0x43, OpcodeName: "SRE", Mode: enums.ModeINDX, Handler: &SREHandler{}},
+		{Command: 0x53, OpcodeName: "SRE", Mode: enums.ModeINDY, Handler: &SREHandler{}},
 	}
 }

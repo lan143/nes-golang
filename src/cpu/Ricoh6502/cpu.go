@@ -167,7 +167,6 @@ func (c *Cpu) setByte(address uint16, value byte) {
 
 	if address >= 0x2000 && address < 0x4000 {
 		address &= 0x2007
-		c.mapper.PutByte(address, value)
 
 		switch address {
 		case 0x2000:
@@ -195,17 +194,14 @@ func (c *Cpu) setByte(address uint16, value byte) {
 		return
 	}
 
-	if address == 0x4014 {
+	if address >= 0x4000 && address <= 0x4017 {
 		c.b.WriteByCPU(address, value)
 		return
 	}
 
-	if address == 0x4016 {
-		c.b.WriteByCPU(address, value)
-		return
+	if address >= 0x8000 {
+		c.mapper.PutByte(address, value)
 	}
-
-	c.mapper.PutByte(address, value)
 }
 
 func (c *Cpu) interrupt(handler InterruptHandler) {

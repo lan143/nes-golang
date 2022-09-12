@@ -43,8 +43,7 @@ func (n *Nes) Init() error {
 		return err
 	}
 
-	// @todo: transfer mapper id from rom
-	m, err := n.mapperFactory.GetMapper(enum.NROM)
+	m, err := n.mapperFactory.GetMapper(enum.Id(r.GetMapperId()))
 	if err != nil {
 		return err
 	}

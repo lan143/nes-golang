@@ -65,6 +65,10 @@ func (n *INes) GetData() []byte {
 	return n.Data
 }
 
+func (n *INes) GetMapperId() byte {
+	return (n.flags6 >> 4) | ((n.flags7 >> 4) << 4)
+}
+
 func (n *INes) loadHeader(file *os.File) error {
 	header := make([]byte, 0x10)
 
@@ -76,8 +80,8 @@ func (n *INes) loadHeader(file *os.File) error {
 
 	n.prgRomSize = header[4]
 	n.chrRomSize = header[5]
-	n.flags6 = header[6]
-	n.flags7 = header[7]
+	n.flags6 = header[6] // control byte 1
+	n.flags7 = header[7] // control byte 2
 	n.flags8 = header[8]
 	n.flags9 = header[9]
 	n.flags10 = header[10]

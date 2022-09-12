@@ -275,44 +275,6 @@ type RRAHandler struct {
 }
 
 func (h *RRAHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
-	var cByte byte
-	if cpu.P.IsC() {
-		cByte = 0x80
-	} else {
-		cByte = 0x0
-	}
-
-	src, err := cpu.loadWithMemoryAccessType(mode, operand)
-	result := (src >> 1) | cByte
-
-	err = cpu.writeWithMemoryAccessType(mode, operand, result)
-	if err != nil {
-		return err
-	}
-
-	if src&1 == 0 {
-		cpu.P.ClearC()
-		cByte = 0
-	} else {
-		cpu.P.SetC()
-		cByte = 1
-	}
-
-	src1 := cpu.A
-	src2 := result
-	result1 := uint16(src1) + uint16(src2) + uint16(cByte)
-	cpu.A = byte(result1)
-
-	cpu.P.UpdateN(cpu.A)
-	cpu.P.UpdateZ(cpu.A)
-	cpu.P.UpdateC(result1)
-
-	if !((src1^src2)&0x80 > 0) && ((src2^result)&0x80 > 0) {
-		cpu.P.SetV()
-	} else {
-		cpu.P.ClearV()
-	}
-
 	cpu.PC++
 
 	return nil
@@ -1079,6 +1041,15 @@ type SLOHandler struct {
 
 // Handle @todo: implement
 func (h *SLOHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
+	cpu.PC++
+
+	return nil
+}
+
+type SREHandler struct {
+}
+
+func (h *SREHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
 	cpu.PC++
 
 	return nil

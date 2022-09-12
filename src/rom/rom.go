@@ -11,4 +11,5 @@ type Rom interface {
 	GetPrgRomSize() uint8
 	GetChrRomSize() uint8
 	GetMirroringType() enum.MirroringType
+	GetMapperId() byte
 }
