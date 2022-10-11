@@ -6,7 +6,6 @@ import (
 	"main/src/bus"
 	"main/src/mapper"
 	"main/src/ram"
-	"sync"
 )
 
 type InterruptHandler uint16
@@ -27,47 +26,59 @@ type Cpu struct {
 	ram  *ram.Ram  // 2KB internal RAM
 
 	mapper           mapper.Mapper
-	decoder          Decoder
 	hasInterrupt     bool
 	interruptHandler InterruptHandler
-	interruptMX      sync.RWMutex
 
 	b *bus.Bus
+
+	skipCycles uint16
 }
 
 func (c *Cpu) Init(mapper mapper.Mapper, ram *ram.Ram) {
 	c.mapper = mapper
-	c.decoder.InitCommands()
 	c.ram = ram
 
 	c.P.Init()
 	c.S.Init(c.ram)
 
 	c.Reset()
-	//c.PC = 0xC000
 
 	c.b.OnInterrupt(bus.NMI, func() {
-		c.interruptMX.Lock()
 		c.hasInterrupt = true
 		c.interruptHandler = NMI
-		c.interruptMX.Unlock()
+	})
+
+	c.b.OnInterrupt(bus.IRQ, func() {
+		c.hasInterrupt = true
+		c.interruptHandler = IRQ
+	})
+
+	c.b.OnReadFromCPU(func(address uint16) byte {
+		return c.getByte(address)
+	})
+
+	c.b.OnCPUSkipCycles(func(cycles uint16) {
+		c.skipCycles += cycles
 	})
 }
 
 func (c *Cpu) Reset() {
-	c.interruptMX.Lock()
+	c.skipCycles = 0
+
 	c.hasInterrupt = true
 	c.interruptHandler = Reset
-	c.interruptMX.Unlock()
 }
 
 func (c *Cpu) Run() {
-	c.interruptMX.RLock()
+	if c.skipCycles > 0 {
+		c.skipCycles--
+		return
+	}
+
 	if c.hasInterrupt {
 		c.hasInterrupt = false
 		c.interrupt(c.interruptHandler)
 	}
-	c.interruptMX.RUnlock()
 
 	err := c.processCommand()
 	if err != nil {
@@ -76,33 +87,24 @@ func (c *Cpu) Run() {
 }
 
 func (c *Cpu) processCommand() error {
-	//position := c.PC
 	command := c.getByte(c.PC)
-
-	found := false
-
-	for _, d := range c.decoder.Commands {
-		if d.Command == command {
-			found = true
-			operand, err := c.loadInstructionOperand(d.Mode)
-
-			if err != nil {
-				return err
-			}
-
-			//c.logExecution(position, d.OpcodeName, d.Mode, operand)
-
-			err = d.Handler.Handle(c, operand, d.Mode)
-
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	if !found {
+	d, ok := handlers[command]
+	if !ok {
 		return fmt.Errorf("handler for command 0x%X not found", command)
 	}
+
+	operand, err := c.loadInstructionOperand(d.Mode)
+	if err != nil {
+		return err
+	}
+
+	err = d.Handler.Handle(c, operand, d.Mode)
+
+	if err != nil {
+		return err
+	}
+
+	c.skipCycles = d.SkipCycles
 
 	return nil
 }
@@ -196,6 +198,10 @@ func (c *Cpu) setByte(address uint16, value byte) {
 
 	if address >= 0x4000 && address <= 0x4017 {
 		c.b.WriteByCPU(address, value)
+
+		if address == 0x4014 {
+			c.skipCycles += 514
+		}
 		return
 	}
 
@@ -225,8 +231,6 @@ func (c *Cpu) interrupt(handler InterruptHandler) {
 	address1 := c.getByte(uint16(handler))
 	address2 := c.getByte(uint16(handler) + 1)
 	c.PC = uint16(address1) | (uint16(address2))<<8
-
-	//log.Printf("Interrupt: 0x%X. Address: 0x%X", handler, c.PC)
 }
 
 func NewCPU(b *bus.Bus) *Cpu {

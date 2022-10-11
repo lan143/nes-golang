@@ -2,6 +2,10 @@ package src
 
 import (
 	"go.uber.org/dig"
+	"main/src/apu"
+	"main/src/audio"
+	"main/src/audio/null"
+	"main/src/audio/oto"
 	"main/src/bus"
 	"main/src/cpu"
 	"main/src/display"
@@ -22,6 +26,10 @@ func BuildContainer() *dig.Container {
 	processError(container.Provide(ppu.NewFactory))
 	processError(container.Provide(display.NewFactory))
 	processError(container.Provide(joypad.NewJoyPad))
+	processError(container.Provide(apu.NewFactory))
+	processError(container.Provide(audio.NewFactory))
+	processError(container.Provide(null.NewAudio))
+	processError(container.Provide(oto.NewAudio))
 
 	return container
 }

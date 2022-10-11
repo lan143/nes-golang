@@ -4,6 +4,7 @@ type Interrupt byte
 
 const (
 	NMI Interrupt = 1
+	IRQ           = 2
 )
 
 type JoyPadButton byte
@@ -20,16 +21,47 @@ const (
 )
 
 type Bus struct {
-	cpuWrites  map[uint16]func(value byte)
-	cpuReads   map[uint16]func() byte
-	interrupts map[Interrupt]func()
-	keyEvent   func(button JoyPadButton, pressed bool)
+	cpuWrites      map[uint16]func(value byte)
+	cpuReads       map[uint16]func() byte
+	interrupts     map[Interrupt]func()
+	keyEvent       func(button JoyPadButton, pressed bool)
+	readFromCPU    func(address uint16) byte
+	apuDMCActivate func()
+	cpuSkipCycles  func(cycles uint16)
 }
 
 func (b *Bus) Init() {
 	b.cpuWrites = make(map[uint16]func(value byte))
 	b.cpuReads = make(map[uint16]func() byte)
 	b.interrupts = make(map[Interrupt]func())
+}
+
+func (b *Bus) CPUSkipCycles(cycles uint16) {
+	b.cpuSkipCycles(cycles)
+}
+
+func (b *Bus) OnCPUSkipCycles(fn func(cycles uint16)) {
+	b.cpuSkipCycles = fn
+}
+
+func (b *Bus) ApuDMCActivate() {
+	b.apuDMCActivate()
+}
+
+func (b *Bus) OnApuDMCActivate(fn func()) {
+	b.apuDMCActivate = fn
+}
+
+func (b *Bus) ReadFromCPU(address uint16) byte {
+	if b.readFromCPU != nil {
+		return b.readFromCPU(address)
+	}
+
+	return 0
+}
+
+func (b *Bus) OnReadFromCPU(fn func(address uint16) byte) {
+	b.readFromCPU = fn
 }
 
 func (b *Bus) WriteByCPU(address uint16, value byte) {
