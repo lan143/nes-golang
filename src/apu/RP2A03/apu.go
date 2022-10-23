@@ -17,7 +17,7 @@ type APU struct {
 	status registers.StatusRegister // 0x4015
 	frame  registers.FrameRegister  // 0x4017
 
-	cycle        uint64
+	cycle        uint32
 	step         byte
 	samplePeriod uint32
 
@@ -194,7 +194,7 @@ func (a *APU) Run() {
 func (a *APU) runCycle() {
 	a.cycle++
 
-	if a.cycle%uint64(a.samplePeriod) == 0 {
+	if a.cycle%a.samplePeriod == 0 {
 		a.sample()
 	}
 

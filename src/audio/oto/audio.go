@@ -21,7 +21,7 @@ type Audio struct {
 
 func (a *Audio) Init() error {
 	var err error
-	a.otoCtx, err = oto.NewContext(int(a.GetSampleRate()), 1, 1, AudioBufferSize*4)
+	a.otoCtx, err = oto.NewContext(int(a.GetSampleRate()), 1, 1, AudioBufferSize)
 	if err != nil {
 		return err
 	}
@@ -40,15 +40,18 @@ func (a *Audio) GetSampleRate() uint32 {
 
 func (a *Audio) PlaySample(sample float32) {
 	if a.bufferIndex < AudioBufferSize {
-		/*sample = (sample - 0.5) * 0.5
-		int8Sample := int8(sample * ((1 << 7) - 1))
-		a.buffer[a.bufferIndex] = byte(int8Sample)*/
-
 		a.buffer[a.bufferIndex] = byte(sample * ((1 << 7) - 1))
 		a.bufferIndex++
 	} else {
 		a.bufferIndex = 0
-		a.playChan <- a.buffer[:]
+
+		playArray := make([]byte, len(a.buffer), len(a.buffer))
+
+		for i, val := range a.buffer {
+			playArray[i] = val
+		}
+
+		a.playChan <- playArray
 	}
 }
 

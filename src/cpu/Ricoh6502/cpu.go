@@ -217,10 +217,6 @@ func (c *Cpu) interrupt(handler InterruptHandler) {
 		return
 	}
 
-	if handler == IRQ {
-		log.Println("IRQ")
-	}
-
 	if handler != Reset {
 		if handler != BRK {
 			c.P.ClearB()
