@@ -18,7 +18,7 @@ type PRegister struct {
 }
 
 func (p *PRegister) Init() {
-	p.value = 0x24
+	p.value = 0x20
 }
 
 func (p *PRegister) GetValue() byte {

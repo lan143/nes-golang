@@ -8,7 +8,7 @@ type Noise struct {
 
 	envelopeStartFlag         bool
 	envelopeCounter           byte
-	envelopeDecayLevelCounter uint32
+	envelopeDecayLevelCounter byte
 
 	lengthCounter byte
 
@@ -19,6 +19,8 @@ type Noise struct {
 }
 
 func (g *Noise) Init() {
+	g.shiftRegister = 0x01
+
 	g.timerTable = [16]uint16{
 		0x004, 0x008, 0x010, 0x020,
 		0x040, 0x060, 0x080, 0x0A0,
@@ -41,7 +43,7 @@ func (g *Noise) DriveTimer() {
 		}
 
 		feedback := (g.shiftRegister & 0x1) ^ ((g.shiftRegister >> shiftCount) & 0x1)
-		g.shiftRegister = (feedback << 14) | g.shiftRegister>>1
+		g.shiftRegister = (feedback << 14) | (g.shiftRegister >> 1)
 	}
 }
 
@@ -103,9 +105,9 @@ func (g *Noise) GetOutput() byte {
 	}
 
 	if g.isDisabledEnvelope() {
-		return g.getEnvelopePeriod()
+		return g.getEnvelopePeriod() & 0xf
 	} else {
-		return byte(g.envelopeDecayLevelCounter) & 0xf
+		return g.envelopeDecayLevelCounter & 0xf
 	}
 }
 
@@ -113,32 +115,26 @@ func (g *Noise) GetRemainingBytes() uint16 { return 0 }
 
 func (g *Noise) GetLengthCounter() byte { return g.lengthCounter }
 
-// this.register0.isBitSet(5)
 func (g *Noise) isDisabledLengthCounter() bool {
+	return g.registers[0]&0x20 > 0
+}
+
+func (g *Noise) isRandom() bool {
+	return g.registers[2]&0x80 > 0
+}
+
+func (g *Noise) getTimerIndex() byte {
+	return g.registers[2] & ((1 << 4) - 1)
+}
+
+func (g *Noise) getLengthCounterIndex() byte {
+	return g.registers[3] >> 3
+}
+
+func (g *Noise) isDisabledEnvelope() bool {
 	return g.registers[0]&0x10 > 0
 }
 
-// this.register0.isBitSet(4)
-func (g *Noise) isDisabledEnvelope() bool {
-	return g.registers[0]&0x8 > 0
-}
-
-// this.register0.loadBits(0, 4)
 func (g *Noise) getEnvelopePeriod() byte {
-	return g.registers[0] & 0x0F
-}
-
-// this.register2.isBitSet(7)
-func (g *Noise) isRandom() bool {
-	return g.registers[2]&0x40 > 0
-}
-
-// this.register2.loadBits(0, 4)
-func (g *Noise) getTimerIndex() byte {
-	return g.registers[2] & 0x0F
-}
-
-// this.register3.loadBits(3, 5)
-func (g *Noise) getLengthCounterIndex() byte {
-	return g.registers[3] >> 3
+	return g.registers[0] & ((1 << 4) - 1)
 }

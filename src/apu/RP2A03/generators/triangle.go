@@ -96,22 +96,18 @@ func (g *Triangle) GetRemainingBytes() uint16 { return 0 }
 
 func (g *Triangle) GetLengthCounter() byte { return g.lengthCounter }
 
-// this.register0.loadBits(0, 7)
 func (g *Triangle) getLinearCounter() byte {
-	return g.registers[0] & 0x7F
+	return g.registers[0] & (0x01 + 0x02 + 0x04 + 0x08 + 0x10 + 0x20 + 0x40)
 }
 
-// this.register0.isBitSet(7)
 func (g *Triangle) isDisabledLengthCounter() bool {
-	return g.registers[0]&0x40 > 0
+	return g.registers[0]&0x80 > 0
 }
 
-// this.register3.loadBits(3, 5)
 func (g *Triangle) getLengthCounterIndex() byte {
 	return g.registers[3] >> 3
 }
 
-// this.register3.loadBits(0, 3) | this.register2
 func (g *Triangle) getTimer() uint16 {
-	return (uint16((g.registers[3])&0x07) << 8) | uint16(g.registers[2])
+	return (uint16((g.registers[3])&(0x01+0x02+0x04)) << 8) | uint16(g.registers[2])
 }

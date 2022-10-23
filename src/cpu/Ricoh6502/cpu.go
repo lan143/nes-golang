@@ -90,6 +90,8 @@ func (c *Cpu) processCommand() error {
 	command := c.getByte(c.PC)
 	d, ok := handlers[command]
 	if !ok {
+		c.PC++
+
 		return fmt.Errorf("handler for command 0x%X not found", command)
 	}
 
@@ -215,17 +217,21 @@ func (c *Cpu) interrupt(handler InterruptHandler) {
 		return
 	}
 
+	if handler == IRQ {
+		log.Println("IRQ")
+	}
+
 	if handler != Reset {
 		if handler != BRK {
 			c.P.ClearB()
 		}
 
-		c.P.SetI()
-
 		stackValue := c.PC
 
 		c.S.PushUint16(stackValue)
 		c.S.PushByte(c.P.GetValue())
+
+		c.P.SetI()
 	}
 
 	address1 := c.getByte(uint16(handler))

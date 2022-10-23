@@ -17,18 +17,29 @@ type APU struct {
 	status registers.StatusRegister // 0x4015
 	frame  registers.FrameRegister  // 0x4017
 
-	cycle        uint32
+	cycle        uint64
 	step         byte
 	samplePeriod uint32
 
 	frameIrqActive bool
 	dmcIrqActive   bool
 
+	pulseTable [32]float32
+	tndTable   [203]float32
+
 	b     *bus.Bus
 	audio audio.Audio
 }
 
 func (a *APU) Init(sampleRate uint32, audio audio.Audio) {
+	for i := 0; i < 31; i++ {
+		a.pulseTable[i] = 95.52 / (8128.0/float32(i) + 100)
+	}
+
+	for i := 0; i < 203; i++ {
+		a.tndTable[i] = 163.67 / (24329.0/float32(i) + 100)
+	}
+
 	a.audio = audio
 
 	a.dmc = &generators.DMC{Bus: a.b}
@@ -183,7 +194,7 @@ func (a *APU) Run() {
 func (a *APU) runCycle() {
 	a.cycle++
 
-	if a.cycle%a.samplePeriod == 0 {
+	if a.cycle%uint64(a.samplePeriod) == 0 {
 		a.sample()
 	}
 
@@ -208,8 +219,10 @@ func (a *APU) runCycle() {
 			if a.step == 0 || a.step == 2 {
 				a.pulse1.DriveLength()
 				a.pulse1.DriveSweep()
+
 				a.pulse2.DriveLength()
 				a.pulse2.DriveSweep()
+
 				a.triangle.DriveLength()
 				a.noise.DriveLength()
 			}
@@ -224,8 +237,10 @@ func (a *APU) runCycle() {
 			if a.step == 1 || a.step == 3 {
 				a.pulse1.DriveLength()
 				a.pulse1.DriveSweep()
+
 				a.pulse2.DriveLength()
 				a.pulse2.DriveSweep()
+
 				a.triangle.DriveLength()
 				a.noise.DriveLength()
 			}
@@ -245,25 +260,10 @@ func (a *APU) runCycle() {
 }
 
 func (a *APU) sample() {
-	pulse1 := float32(a.pulse1.GetOutput())
-	pulse2 := float32(a.pulse2.GetOutput())
-	pulse1 = 0
-	triangle := float32(a.triangle.GetOutput())
-	noise := float32(a.noise.GetOutput())
-	dmc := float32(a.dmc.GetOutput())
-
-	var pulseOut float32 = 0
-	var tndOut float32 = 0
-
-	if pulse1 != 0.0 || pulse2 != 0.0 {
-		pulseOut = 95.88 / ((8128.0 / (pulse1 + pulse2)) + 100.0)
-	}
-
-	if triangle != 0.0 || noise != 0.0 || dmc != 0.0 {
-		tndOut = 159.79 / (1/(triangle/8227+noise/12241+dmc/22638) + 100)
-	}
-
-	a.audio.PlaySample(pulseOut + tndOut)
+	a.audio.PlaySample(
+		a.pulseTable[a.pulse1.GetOutput()+a.pulse2.GetOutput()] +
+			a.tndTable[3*a.triangle.GetOutput()+2*a.noise.GetOutput()+a.dmc.GetOutput()],
+	)
 }
 
 func NewApu(b *bus.Bus) *APU {

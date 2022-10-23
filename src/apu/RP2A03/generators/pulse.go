@@ -9,7 +9,7 @@ type Pulse struct {
 
 	envelopeStartFlag         bool
 	envelopeCounter           byte
-	envelopeDecayLevelCounter uint32
+	envelopeDecayLevelCounter byte
 
 	lengthCounter byte
 
@@ -76,15 +76,15 @@ func (g *Pulse) DriveLength() {
 }
 
 func (g *Pulse) DriveSweep() {
-	if g.sweepCounter > 0 && g.isEnabledSweep() && g.getSweepShiftAmount() > 0 && g.timerPeriod >= 8 && g.timerPeriod <= 0x7FF {
+	if g.sweepCounter > 0 && g.isEnabledSweep() && g.getSweepShiftAmount() != 0 && g.timerPeriod >= 8 && g.timerPeriod <= 0x7FF {
 		change := g.timerPeriod >> g.getSweepShiftAmount()
-
-		if g.Channel == 1 {
-			change -= 1
-		}
 
 		if g.isNegatedSweep() {
 			g.timerPeriod -= change
+
+			if g.Channel == 1 {
+				g.timerPeriod--
+			}
 		} else {
 			g.timerPeriod += change
 		}
@@ -132,7 +132,7 @@ func (g *Pulse) GetOutput() byte {
 	if g.isDisabledEnvelope() {
 		return g.getEnvelopePeriod() & 0xF
 	} else {
-		return byte(g.envelopeDecayLevelCounter) & 0xF
+		return g.envelopeDecayLevelCounter & 0xF
 	}
 }
 
@@ -140,52 +140,42 @@ func (g *Pulse) GetRemainingBytes() uint16 { return 0 }
 
 func (g *Pulse) GetLengthCounter() byte { return g.lengthCounter }
 
-// this.register3.loadBits(0, 3) << 8 | this.register2
 func (g *Pulse) getTimer() uint16 {
-	return (uint16((g.registers[3])&0x07) << 8) | uint16(g.registers[2])
+	return (uint16((g.registers[3])&((1<<3)-1)) << 8) | uint16(g.registers[2])
 }
 
-// this.register3.loadBits(3, 5)
 func (g *Pulse) getLengthCounterIndex() byte {
-	return g.registers[3] >> 3 & 0x03
+	return (g.registers[3] >> 3) & ((1 << 5) - 1)
 }
 
-// this.register0.isBitSet(4)
-func (g *Pulse) isDisabledEnvelope() bool {
-	return g.registers[0]&0x08 > 0
-}
-
-// this.register0.loadBits(6, 2);
 func (g *Pulse) getDuty() byte {
-	return g.registers[0] >> 6 & 0x03
+	return (g.registers[0] >> 6) & ((1 << 2) - 1)
 }
 
-// this.register0.isBitSet(5);
+func (g *Pulse) isEnabledSweep() bool {
+	return g.registers[1]&0x80 > 0
+}
+
+func (g *Pulse) getSweepPeriod() byte {
+	return g.registers[1] >> 4 & ((1 << 3) - 1)
+}
+
+func (g *Pulse) isNegatedSweep() bool {
+	return g.registers[1]&0x08 > 0
+}
+
+func (g *Pulse) getSweepShiftAmount() byte {
+	return g.registers[1] & ((1 << 3) - 1)
+}
+
 func (g *Pulse) isEnabledEnvelopeLoop() bool {
+	return g.registers[0]&0x20 > 0
+}
+
+func (g *Pulse) isDisabledEnvelope() bool {
 	return g.registers[0]&0x10 > 0
 }
 
-// this.register0.loadBits(0, 4)
 func (g *Pulse) getEnvelopePeriod() byte {
-	return g.registers[0] & 0x0F
-}
-
-// this.register1.isBitSet(7)
-func (g *Pulse) isEnabledSweep() bool {
-	return g.registers[1]&0x40 > 0
-}
-
-// this.register1.loadBits(4, 3)
-func (g *Pulse) getSweepPeriod() byte {
-	return g.registers[1] >> 4 & 0x07
-}
-
-// this.register1.isBitSet(3)
-func (g *Pulse) isNegatedSweep() bool {
-	return g.registers[1]&0x04 > 0
-}
-
-// this.register1.loadBits(0, 3)
-func (g *Pulse) getSweepShiftAmount() byte {
-	return g.registers[1] & 0x07
+	return g.registers[0] & ((1 << 4) - 1)
 }

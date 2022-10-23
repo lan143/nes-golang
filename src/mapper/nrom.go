@@ -6,7 +6,7 @@ import (
 )
 
 type NROMMapper struct {
-	memory [0xffff]byte
+	memory [0x10000]byte
 	chrRom [0x2000]byte
 	rom    rom.Rom
 }
@@ -22,7 +22,7 @@ func (m *NROMMapper) GetMirroringType() enum.MirroringType {
 func (m *NROMMapper) LoadRom(rom rom.Rom) {
 	m.rom = rom
 
-	var i, j uint16
+	var i, j uint32
 	data := rom.GetData()
 	j = 0
 
@@ -35,15 +35,13 @@ func (m *NROMMapper) LoadRom(rom rom.Rom) {
 	}
 
 	// Prg ROM
-	for i = 0xC000; i <= 0xFFFE; i++ {
+	for i = 0xC000; i <= 0xFFFF; i++ {
 		m.memory[i] = data[j]
 		j++
 	}
 
-	j++
-
 	// Chr ROM
-	for i = 0x0000; i < (0x1000 * uint16(m.rom.GetChrRomSize()+1)); i++ {
+	for i = 0x0000; i < uint32(0x1000*uint16(m.rom.GetChrRomSize()+1)); i++ {
 		m.chrRom[i] = data[j]
 		j++
 	}

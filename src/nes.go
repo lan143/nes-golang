@@ -14,7 +14,6 @@ import (
 	"main/src/ram"
 	"main/src/rom"
 	"os"
-	"time"
 )
 
 type Nes struct {
@@ -87,7 +86,7 @@ func (n *Nes) Run(ctx context.Context) {
 
 	go func() {
 		for {
-			oldTime := time.Now()
+			//oldTime := time.Now()
 
 			n.cpu.Run()
 
@@ -98,8 +97,8 @@ func (n *Nes) Run(ctx context.Context) {
 
 			n.apu.Run()
 
-			for time.Since(oldTime) < 500*time.Nanosecond {
-			}
+			/*for time.Since(oldTime) < 500*time.Nanosecond {
+			}*/
 
 			// 0,000000558730074
 		}

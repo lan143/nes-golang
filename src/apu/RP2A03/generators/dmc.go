@@ -135,32 +135,26 @@ func (g *DMC) GetRemainingBytes() uint16 { return g.remainingBytesCounter }
 
 func (g *DMC) GetLengthCounter() byte { return 0 }
 
-// this.register0.isBitSet(7)
 func (g *DMC) isEnabledIrq() bool {
+	return g.registers[0]&0x80 > 0
+}
+
+func (g *DMC) isLoop() bool {
 	return g.registers[0]&0x40 > 0
 }
 
-// this.register0.isBitSet(6)
-func (g *DMC) isLoop() bool {
-	return g.registers[0]&0x20 > 0
-}
-
-// this.register0.loadBits(0, 4)
 func (g *DMC) getTimerIndex() byte {
 	return g.registers[0] & 0x0F
 }
 
-// this.register1.loadBits(0, 7)
 func (g *DMC) getDeltaCounter() byte {
 	return g.registers[1] & 0x7F
 }
 
-// this.register2
 func (g *DMC) getSampleAddress() byte {
 	return g.registers[2]
 }
 
-// this.register3
 func (g *DMC) getSampleLength() byte {
 	return g.registers[3]
 }
