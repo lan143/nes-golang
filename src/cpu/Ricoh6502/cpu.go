@@ -88,8 +88,8 @@ func (c *Cpu) Run() {
 
 func (c *Cpu) processCommand() error {
 	command := c.getByte(c.PC)
-	d, ok := handlers[command]
-	if !ok {
+	d := commandHandlers[command]
+	if d == nil {
 		c.PC++
 
 		return fmt.Errorf("handler for command 0x%X not found", command)

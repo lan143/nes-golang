@@ -3,23 +3,21 @@ package pixelgl
 import (
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
-	"image"
-	color2 "image/color"
 	"main/src/bus"
 )
 
 type Display struct {
 	win            *pixelgl.Window
 	canvas         *pixelgl.Canvas
-	buffer         *image.RGBA
+	pixelBuffer    []uint8
 	updateScreenCh chan any
 
 	bus *bus.Bus
 }
 
 func (d *Display) Init() {
-	d.buffer = image.NewRGBA(image.Rect(0, 0, 512, 480))
-	d.updateScreenCh = make(chan any, 1000)
+	d.pixelBuffer = make([]uint8, 512*480*4)
+	d.updateScreenCh = make(chan any)
 }
 
 func (d *Display) Run() {
@@ -49,7 +47,7 @@ func (d *Display) runInternal() {
 		<-d.updateScreenCh
 
 		if !d.win.Closed() {
-			d.canvas.SetPixels(d.buffer.Pix)
+			d.canvas.SetPixels(d.pixelBuffer)
 			d.canvas.Draw(d.win, pixel.IM.Moved(d.win.Bounds().Center()))
 			d.win.Update()
 
@@ -105,16 +103,16 @@ func (d *Display) runInternal() {
 }
 
 func (d *Display) RenderPixel(x, y uint16, color uint32) {
-	y = 240 - y
+	y = 239 - y
 
 	for i := 0; i < 2; i++ {
 		for j := 0; j < 2; j++ {
-			d.buffer.Set((int(x)*2)+j, (int(y)*2)+i, color2.RGBA{
-				R: uint8(color),
-				G: uint8(color >> 8),
-				B: uint8(color >> 16),
-				A: uint8(color >> 24),
-			})
+			offset := ((int(y)*2)+i)*4*512 + ((int(x)*2)+j)*4
+
+			d.pixelBuffer[offset] = uint8(color)
+			d.pixelBuffer[offset+1] = uint8(color >> 8)
+			d.pixelBuffer[offset+2] = uint8(color >> 16)
+			d.pixelBuffer[offset+3] = uint8(color >> 24)
 		}
 	}
 }

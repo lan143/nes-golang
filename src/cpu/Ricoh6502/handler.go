@@ -16,192 +16,193 @@ type Handler interface {
 	Handle(cpu *Cpu, operand uint16, mode enums.Modes) error
 }
 
-var handlers = map[byte]CommandHandler{
-	0x00: {Command: 0x00, OpcodeName: "BRK", Mode: enums.ModeIMP, Handler: &BRKHandler{}, SkipCycles: 7},
-	0x01: {Command: 0x01, OpcodeName: "ORA", Mode: enums.ModeINDX, Handler: &ORAHandler{}, SkipCycles: 6},
-	0x03: {Command: 0x03, OpcodeName: "SLO", Mode: enums.ModeINDX, Handler: &SLOHandler{}, SkipCycles: 0},
-	0x05: {Command: 0x05, OpcodeName: "ORA", Mode: enums.ModeZP, Handler: &ORAHandler{}, SkipCycles: 3},
-	0x06: {Command: 0x06, OpcodeName: "ASL", Mode: enums.ModeZP, Handler: &ASLHandler{}, SkipCycles: 5},
-	0x07: {Command: 0x07, OpcodeName: "SLO", Mode: enums.ModeZP, Handler: &SLOHandler{}, SkipCycles: 0},
-	0x08: {Command: 0x08, OpcodeName: "PHP", Mode: enums.ModeIMP, Handler: &PHPHandler{}, SkipCycles: 3},
-	0x09: {Command: 0x09, OpcodeName: "ORA", Mode: enums.ModeIMM, Handler: &ORAHandler{}, SkipCycles: 2},
-	0x0A: {Command: 0x0A, OpcodeName: "ASL", Mode: enums.ModeAcc, Handler: &ASLHandler{}, SkipCycles: 2},
-	0x0D: {Command: 0x0D, OpcodeName: "ORA", Mode: enums.ModeABS, Handler: &ORAHandler{}, SkipCycles: 4},
-	0x0E: {Command: 0x0E, OpcodeName: "ASL", Mode: enums.ModeABS, Handler: &ASLHandler{}, SkipCycles: 6},
-	0x0F: {Command: 0x0F, OpcodeName: "SLO", Mode: enums.ModeABS, Handler: &SLOHandler{}, SkipCycles: 0},
-	0x10: {Command: 0x10, OpcodeName: "BPL", Mode: enums.ModeREL, Handler: &BPLHandler{}, SkipCycles: 2},
-	0x11: {Command: 0x11, OpcodeName: "ORA", Mode: enums.ModeINDY, Handler: &ORAHandler{}, SkipCycles: 5},
-	0x13: {Command: 0x13, OpcodeName: "SLO", Mode: enums.ModeINDY, Handler: &SLOHandler{}, SkipCycles: 0},
-	0x15: {Command: 0x15, OpcodeName: "ORA", Mode: enums.ModeZPX, Handler: &ORAHandler{}, SkipCycles: 4},
-	0x16: {Command: 0x16, OpcodeName: "ASL", Mode: enums.ModeZPX, Handler: &ASLHandler{}, SkipCycles: 6},
-	0x17: {Command: 0x17, OpcodeName: "SLO", Mode: enums.ModeZPX, Handler: &SLOHandler{}, SkipCycles: 0},
-	0x18: {Command: 0x18, OpcodeName: "CLC", Mode: enums.ModeIMP, Handler: &CLCHandler{}, SkipCycles: 2},
-	0x19: {Command: 0x19, OpcodeName: "ORA", Mode: enums.ModeABSY, Handler: &ORAHandler{}, SkipCycles: 4},
-	0x1B: {Command: 0x1B, OpcodeName: "SLO", Mode: enums.ModeABSY, Handler: &SLOHandler{}, SkipCycles: 0},
-	0x1D: {Command: 0x1D, OpcodeName: "ORA", Mode: enums.ModeABSX, Handler: &ORAHandler{}, SkipCycles: 4},
-	0x1E: {Command: 0x1E, OpcodeName: "ASL", Mode: enums.ModeABSX, Handler: &ASLHandler{}, SkipCycles: 7},
-	0x1F: {Command: 0x1F, OpcodeName: "SLO", Mode: enums.ModeABSX, Handler: &SLOHandler{}, SkipCycles: 0},
-	0x20: {Command: 0x20, OpcodeName: "JSR", Mode: enums.ModeABS, Handler: &JSRHandler{}, SkipCycles: 0},
-	0x21: {Command: 0x21, OpcodeName: "AND", Mode: enums.ModeINDX, Handler: &ANDHandler{}, SkipCycles: 6},
-	0x23: {Command: 0x23, OpcodeName: "RLA", Mode: enums.ModeINDX, Handler: &RLAHandler{}, SkipCycles: 0},
-	0x24: {Command: 0x24, OpcodeName: "BIT", Mode: enums.ModeZP, Handler: &BITHandler{}, SkipCycles: 3},
-	0x25: {Command: 0x25, OpcodeName: "AND", Mode: enums.ModeZP, Handler: &ANDHandler{}, SkipCycles: 3},
-	0x26: {Command: 0x26, OpcodeName: "ROL", Mode: enums.ModeZP, Handler: &ROLHandler{}, SkipCycles: 5},
-	0x27: {Command: 0x27, OpcodeName: "RLA", Mode: enums.ModeZP, Handler: &RLAHandler{}, SkipCycles: 0},
-	0x28: {Command: 0x28, OpcodeName: "PLP", Mode: enums.ModeIMP, Handler: &PLPHandler{}, SkipCycles: 4},
-	0x29: {Command: 0x29, OpcodeName: "AND", Mode: enums.ModeIMM, Handler: &ANDHandler{}, SkipCycles: 2},
-	0x2A: {Command: 0x2A, OpcodeName: "ROL", Mode: enums.ModeAcc, Handler: &ROLHandler{}, SkipCycles: 2},
-	0x2C: {Command: 0x2C, OpcodeName: "BIT", Mode: enums.ModeABS, Handler: &BITHandler{}, SkipCycles: 4},
-	0x2D: {Command: 0x2D, OpcodeName: "AND", Mode: enums.ModeABS, Handler: &ANDHandler{}, SkipCycles: 4},
-	0x2E: {Command: 0x2E, OpcodeName: "ROL", Mode: enums.ModeABS, Handler: &ROLHandler{}, SkipCycles: 6},
-	0x2F: {Command: 0x2F, OpcodeName: "RLA", Mode: enums.ModeABS, Handler: &RLAHandler{}, SkipCycles: 0},
-	0x30: {Command: 0x30, OpcodeName: "BMI", Mode: enums.ModeREL, Handler: &BMIHandler{}, SkipCycles: 2},
-	0x31: {Command: 0x31, OpcodeName: "AND", Mode: enums.ModeINDY, Handler: &ANDHandler{}, SkipCycles: 5},
-	0x33: {Command: 0x33, OpcodeName: "RLA", Mode: enums.ModeINDY, Handler: &RLAHandler{}, SkipCycles: 0},
-	0x35: {Command: 0x35, OpcodeName: "AND", Mode: enums.ModeZPX, Handler: &ANDHandler{}, SkipCycles: 4},
-	0x36: {Command: 0x36, OpcodeName: "ROL", Mode: enums.ModeZPX, Handler: &ROLHandler{}, SkipCycles: 6},
-	0x37: {Command: 0x37, OpcodeName: "RLA", Mode: enums.ModeZPX, Handler: &RLAHandler{}, SkipCycles: 0},
-	0x38: {Command: 0x38, OpcodeName: "SEC", Mode: enums.ModeIMP, Handler: &SECHandler{}, SkipCycles: 2},
-	0x39: {Command: 0x39, OpcodeName: "AND", Mode: enums.ModeABSY, Handler: &ANDHandler{}, SkipCycles: 4},
-	0x3B: {Command: 0x3B, OpcodeName: "RLA", Mode: enums.ModeABSY, Handler: &RLAHandler{}, SkipCycles: 0},
-	0x3D: {Command: 0x3D, OpcodeName: "AND", Mode: enums.ModeABSX, Handler: &ANDHandler{}, SkipCycles: 4},
-	0x3E: {Command: 0x3E, OpcodeName: "ROL", Mode: enums.ModeABSX, Handler: &ROLHandler{}, SkipCycles: 7},
-	0x3F: {Command: 0x3F, OpcodeName: "RLA", Mode: enums.ModeABSX, Handler: &RLAHandler{}, SkipCycles: 0},
+var commandHandlers [256]*CommandHandler
 
-	0x98: {Command: 0x98, OpcodeName: "TYA", Mode: enums.ModeIMP, Handler: &TYAHandler{}, SkipCycles: 2},
-	0x4C: {Command: 0x4C, OpcodeName: "JMP", Mode: enums.ModeABS, Handler: &JMPHandler{}, SkipCycles: 0},
-	0x6C: {Command: 0x6C, OpcodeName: "JMP", Mode: enums.ModeIND, Handler: &JMPHandler{}, SkipCycles: 0},
-	0x78: {Command: 0x78, OpcodeName: "SEI", Mode: enums.ModeIMP, Handler: &SEIHandler{}, SkipCycles: 2},
-	0xD8: {Command: 0xD8, OpcodeName: "CLD", Mode: enums.ModeIMP, Handler: &CLDHandler{}, SkipCycles: 2},
-	0x49: {Command: 0x49, OpcodeName: "EOR", Mode: enums.ModeIMM, Handler: &EORHandler{}, SkipCycles: 2},
-	0x45: {Command: 0x45, OpcodeName: "EOR", Mode: enums.ModeZP, Handler: &EORHandler{}, SkipCycles: 3},
-	0x55: {Command: 0x55, OpcodeName: "EOR", Mode: enums.ModeZPX, Handler: &EORHandler{}, SkipCycles: 4},
-	0x4D: {Command: 0x4D, OpcodeName: "EOR", Mode: enums.ModeABS, Handler: &EORHandler{}, SkipCycles: 4},
-	0x5D: {Command: 0x5D, OpcodeName: "EOR", Mode: enums.ModeABSX, Handler: &EORHandler{}, SkipCycles: 4},
-	0x59: {Command: 0x59, OpcodeName: "EOR", Mode: enums.ModeABSY, Handler: &EORHandler{}, SkipCycles: 4},
-	0x41: {Command: 0x41, OpcodeName: "EOR", Mode: enums.ModeINDX, Handler: &EORHandler{}, SkipCycles: 6},
-	0x51: {Command: 0x51, OpcodeName: "EOR", Mode: enums.ModeINDY, Handler: &EORHandler{}, SkipCycles: 5},
-	0x85: {Command: 0x85, OpcodeName: "STA", Mode: enums.ModeZP, Handler: &STAHandler{}, SkipCycles: 3},
-	0x95: {Command: 0x95, OpcodeName: "STA", Mode: enums.ModeZPX, Handler: &STAHandler{}, SkipCycles: 4},
-	0x8D: {Command: 0x8D, OpcodeName: "STA", Mode: enums.ModeABS, Handler: &STAHandler{}, SkipCycles: 4},
-	0x9D: {Command: 0x9D, OpcodeName: "STA", Mode: enums.ModeABSX, Handler: &STAHandler{}, SkipCycles: 5},
-	0x99: {Command: 0x99, OpcodeName: "STA", Mode: enums.ModeABSY, Handler: &STAHandler{}, SkipCycles: 5},
-	0x81: {Command: 0x81, OpcodeName: "STA", Mode: enums.ModeINDX, Handler: &STAHandler{}, SkipCycles: 6},
-	0x91: {Command: 0x91, OpcodeName: "STA", Mode: enums.ModeINDY, Handler: &STAHandler{}, SkipCycles: 6},
-	0xA9: {Command: 0xA9, OpcodeName: "LDA", Mode: enums.ModeIMM, Handler: &LDAHandler{}, SkipCycles: 2},
-	0xA5: {Command: 0xA5, OpcodeName: "LDA", Mode: enums.ModeZP, Handler: &LDAHandler{}, SkipCycles: 3},
-	0xB5: {Command: 0xB5, OpcodeName: "LDA", Mode: enums.ModeZPX, Handler: &LDAHandler{}, SkipCycles: 4},
-	0xAD: {Command: 0xAD, OpcodeName: "LDA", Mode: enums.ModeABS, Handler: &LDAHandler{}, SkipCycles: 4},
-	0xBD: {Command: 0xBD, OpcodeName: "LDA", Mode: enums.ModeABSX, Handler: &LDAHandler{}, SkipCycles: 4},
-	0xB9: {Command: 0xB9, OpcodeName: "LDA", Mode: enums.ModeABSY, Handler: &LDAHandler{}, SkipCycles: 4},
-	0xA1: {Command: 0xA1, OpcodeName: "LDA", Mode: enums.ModeINDX, Handler: &LDAHandler{}, SkipCycles: 6},
-	0xB1: {Command: 0xB1, OpcodeName: "LDA", Mode: enums.ModeINDY, Handler: &LDAHandler{}, SkipCycles: 5},
-	0x6A: {Command: 0x6A, OpcodeName: "ROR", Mode: enums.ModeAcc, Handler: &RORHandler{}, SkipCycles: 2},
-	0x66: {Command: 0x66, OpcodeName: "ROR", Mode: enums.ModeZP, Handler: &RORHandler{}, SkipCycles: 5},
-	0x76: {Command: 0x76, OpcodeName: "ROR", Mode: enums.ModeZPX, Handler: &RORHandler{}, SkipCycles: 6},
-	0x6E: {Command: 0x6E, OpcodeName: "ROR", Mode: enums.ModeABS, Handler: &RORHandler{}, SkipCycles: 6},
-	0x7E: {Command: 0x7E, OpcodeName: "ROR", Mode: enums.ModeABSX, Handler: &RORHandler{}, SkipCycles: 7},
-	0xCA: {Command: 0xCA, OpcodeName: "DEX", Mode: enums.ModeIMP, Handler: &DEXHandler{}, SkipCycles: 2},
-	0x4A: {Command: 0x4A, OpcodeName: "LSR", Mode: enums.ModeAcc, Handler: &LSRHandler{}, SkipCycles: 2},
-	0x46: {Command: 0x46, OpcodeName: "LSR", Mode: enums.ModeZP, Handler: &LSRHandler{}, SkipCycles: 5},
-	0x56: {Command: 0x56, OpcodeName: "LSR", Mode: enums.ModeZPX, Handler: &LSRHandler{}, SkipCycles: 6},
-	0x4E: {Command: 0x4E, OpcodeName: "LSR", Mode: enums.ModeABS, Handler: &LSRHandler{}, SkipCycles: 6},
-	0x5E: {Command: 0x5E, OpcodeName: "LSR", Mode: enums.ModeABSX, Handler: &LSRHandler{}, SkipCycles: 7},
-	0x67: {Command: 0x67, OpcodeName: "RRA", Mode: enums.ModeZP, Handler: &RRAHandler{}, SkipCycles: 0},
-	0x77: {Command: 0x77, OpcodeName: "RRA", Mode: enums.ModeZPX, Handler: &RRAHandler{}, SkipCycles: 0},
-	0x6F: {Command: 0x6F, OpcodeName: "RRA", Mode: enums.ModeABS, Handler: &RRAHandler{}, SkipCycles: 0},
-	0x7F: {Command: 0x7F, OpcodeName: "RRA", Mode: enums.ModeABSX, Handler: &RRAHandler{}, SkipCycles: 0},
-	0x7B: {Command: 0x7B, OpcodeName: "RRA", Mode: enums.ModeABSY, Handler: &RRAHandler{}, SkipCycles: 0},
-	0x63: {Command: 0x63, OpcodeName: "RRA", Mode: enums.ModeINDX, Handler: &RRAHandler{}, SkipCycles: 0},
-	0x73: {Command: 0x73, OpcodeName: "RRA", Mode: enums.ModeINDY, Handler: &RRAHandler{}, SkipCycles: 0},
-	0xE7: {Command: 0xE7, OpcodeName: "ISB", Mode: enums.ModeZP, Handler: &ISBHandler{}, SkipCycles: 0},
-	0xF7: {Command: 0xF7, OpcodeName: "ISB", Mode: enums.ModeZPX, Handler: &ISBHandler{}, SkipCycles: 0},
-	0xEF: {Command: 0xEF, OpcodeName: "ISB", Mode: enums.ModeABS, Handler: &ISBHandler{}, SkipCycles: 0},
-	0xFF: {Command: 0xFF, OpcodeName: "ISB", Mode: enums.ModeABSX, Handler: &ISBHandler{}, SkipCycles: 0},
-	0xFB: {Command: 0xFB, OpcodeName: "ISB", Mode: enums.ModeABSY, Handler: &ISBHandler{}, SkipCycles: 0},
-	0xE3: {Command: 0xE3, OpcodeName: "ISB", Mode: enums.ModeINDX, Handler: &ISBHandler{}, SkipCycles: 0},
-	0xF3: {Command: 0xF3, OpcodeName: "ISB", Mode: enums.ModeINDY, Handler: &ISBHandler{}, SkipCycles: 0},
-	0xA2: {Command: 0xA2, OpcodeName: "LDX", Mode: enums.ModeIMM, Handler: &LDXHandler{}, SkipCycles: 2},
-	0xA6: {Command: 0xA6, OpcodeName: "LDX", Mode: enums.ModeZP, Handler: &LDXHandler{}, SkipCycles: 3},
-	0xB6: {Command: 0xB6, OpcodeName: "LDX", Mode: enums.ModeZPY, Handler: &LDXHandler{}, SkipCycles: 4},
-	0xAE: {Command: 0xAE, OpcodeName: "LDX", Mode: enums.ModeABS, Handler: &LDXHandler{}, SkipCycles: 4},
-	0xBE: {Command: 0xBE, OpcodeName: "LDX", Mode: enums.ModeABSY, Handler: &LDXHandler{}, SkipCycles: 4},
-	0xD0: {Command: 0xD0, OpcodeName: "BNE", Mode: enums.ModeREL, Handler: &BNEHandler{}, SkipCycles: 2},
-	0x69: {Command: 0x69, OpcodeName: "ADC", Mode: enums.ModeIMM, Handler: &ADCHandler{}, SkipCycles: 2},
-	0x65: {Command: 0x65, OpcodeName: "ADC", Mode: enums.ModeZP, Handler: &ADCHandler{}, SkipCycles: 3},
-	0x75: {Command: 0x75, OpcodeName: "ADC", Mode: enums.ModeZPX, Handler: &ADCHandler{}, SkipCycles: 4},
-	0x6D: {Command: 0x6D, OpcodeName: "ADC", Mode: enums.ModeABS, Handler: &ADCHandler{}, SkipCycles: 4},
-	0x7D: {Command: 0x7D, OpcodeName: "ADC", Mode: enums.ModeABSX, Handler: &ADCHandler{}, SkipCycles: 4},
-	0x79: {Command: 0x79, OpcodeName: "ADC", Mode: enums.ModeABSY, Handler: &ADCHandler{}, SkipCycles: 4},
-	0x61: {Command: 0x61, OpcodeName: "ADC", Mode: enums.ModeINDX, Handler: &ADCHandler{}, SkipCycles: 6},
-	0x71: {Command: 0x71, OpcodeName: "ADC", Mode: enums.ModeINDY, Handler: &ADCHandler{}, SkipCycles: 5},
-	0x9A: {Command: 0x9A, OpcodeName: "TXS", Mode: enums.ModeIMP, Handler: &TXSHandler{}, SkipCycles: 2},
-	0x60: {Command: 0x60, OpcodeName: "RTS", Mode: enums.ModeIMP, Handler: &RTSHandler{}, SkipCycles: 6},
-	0x90: {Command: 0x90, OpcodeName: "BCC", Mode: enums.ModeREL, Handler: &BCCHandler{}, SkipCycles: 2},
-	0xB0: {Command: 0xB0, OpcodeName: "BCS", Mode: enums.ModeREL, Handler: &BCSHandler{}, SkipCycles: 2},
-	0xF0: {Command: 0xF0, OpcodeName: "BEQ", Mode: enums.ModeREL, Handler: &BEQHandler{}, SkipCycles: 2},
-	0x50: {Command: 0x50, OpcodeName: "BVC", Mode: enums.ModeREL, Handler: &BVCHandler{}, SkipCycles: 2},
-	0x70: {Command: 0x70, OpcodeName: "BVS", Mode: enums.ModeREL, Handler: &BVSHandler{}, SkipCycles: 2},
-	0x58: {Command: 0x58, OpcodeName: "CLI", Mode: enums.ModeIMP, Handler: &CLIHandler{}, SkipCycles: 2},
-	0xB8: {Command: 0xB8, OpcodeName: "CLV", Mode: enums.ModeIMP, Handler: &CLVHandler{}, SkipCycles: 2},
-	0xC9: {Command: 0xC9, OpcodeName: "CMP", Mode: enums.ModeIMM, Handler: &CMPHandler{}, SkipCycles: 2},
-	0xC5: {Command: 0xC5, OpcodeName: "CMP", Mode: enums.ModeZP, Handler: &CMPHandler{}, SkipCycles: 3},
-	0xD5: {Command: 0xD5, OpcodeName: "CMP", Mode: enums.ModeZPX, Handler: &CMPHandler{}, SkipCycles: 4},
-	0xCD: {Command: 0xCD, OpcodeName: "CMP", Mode: enums.ModeABS, Handler: &CMPHandler{}, SkipCycles: 4},
-	0xDD: {Command: 0xDD, OpcodeName: "CMP", Mode: enums.ModeABSX, Handler: &CMPHandler{}, SkipCycles: 4},
-	0xD9: {Command: 0xD9, OpcodeName: "CMP", Mode: enums.ModeABSY, Handler: &CMPHandler{}, SkipCycles: 4},
-	0xC1: {Command: 0xC1, OpcodeName: "CMP", Mode: enums.ModeINDX, Handler: &CMPHandler{}, SkipCycles: 6},
-	0xD1: {Command: 0xD1, OpcodeName: "CMP", Mode: enums.ModeINDY, Handler: &CMPHandler{}, SkipCycles: 5},
-	0xE0: {Command: 0xE0, OpcodeName: "CPX", Mode: enums.ModeIMM, Handler: &CPXHandler{}, SkipCycles: 2},
-	0xE4: {Command: 0xE4, OpcodeName: "CPX", Mode: enums.ModeZP, Handler: &CPXHandler{}, SkipCycles: 3},
-	0xEC: {Command: 0xEC, OpcodeName: "CPX", Mode: enums.ModeABS, Handler: &CPXHandler{}, SkipCycles: 4},
-	0xC0: {Command: 0xC0, OpcodeName: "CPY", Mode: enums.ModeIMM, Handler: &CPYHandle{}, SkipCycles: 2},
-	0xC4: {Command: 0xC4, OpcodeName: "CPY", Mode: enums.ModeZP, Handler: &CPYHandle{}, SkipCycles: 3},
-	0xCC: {Command: 0xCC, OpcodeName: "CPY", Mode: enums.ModeABS, Handler: &CPYHandle{}, SkipCycles: 4},
-	0xC6: {Command: 0xC6, OpcodeName: "DEC", Mode: enums.ModeZP, Handler: &DECHandler{}, SkipCycles: 5},
-	0xD6: {Command: 0xD6, OpcodeName: "DEC", Mode: enums.ModeZPX, Handler: &DECHandler{}, SkipCycles: 6},
-	0xCE: {Command: 0xCE, OpcodeName: "DEC", Mode: enums.ModeABS, Handler: &DECHandler{}, SkipCycles: 6},
-	0xDE: {Command: 0xDE, OpcodeName: "DEC", Mode: enums.ModeABSX, Handler: &DECHandler{}, SkipCycles: 7},
-	0x88: {Command: 0x88, OpcodeName: "DEY", Mode: enums.ModeIMP, Handler: &DEYHandler{}, SkipCycles: 2},
-	0xE6: {Command: 0xE6, OpcodeName: "INC", Mode: enums.ModeZP, Handler: &INCHandler{}, SkipCycles: 5},
-	0xF6: {Command: 0xF6, OpcodeName: "INC", Mode: enums.ModeZPX, Handler: &INCHandler{}, SkipCycles: 6},
-	0xEE: {Command: 0xEE, OpcodeName: "INC", Mode: enums.ModeABS, Handler: &INCHandler{}, SkipCycles: 6},
-	0xFE: {Command: 0xFE, OpcodeName: "INC", Mode: enums.ModeABSX, Handler: &INCHandler{}, SkipCycles: 7},
-	0xE8: {Command: 0xE8, OpcodeName: "INX", Mode: enums.ModeIMP, Handler: &INXHandler{}, SkipCycles: 2},
-	0xC8: {Command: 0xC8, OpcodeName: "INY", Mode: enums.ModeIMP, Handler: &INYHandler{}, SkipCycles: 2},
-	0xA0: {Command: 0xA0, OpcodeName: "LDY", Mode: enums.ModeIMM, Handler: &LDYHandler{}, SkipCycles: 2},
-	0xA4: {Command: 0xA4, OpcodeName: "LDY", Mode: enums.ModeZP, Handler: &LDYHandler{}, SkipCycles: 3},
-	0xB4: {Command: 0xB4, OpcodeName: "LDY", Mode: enums.ModeZPX, Handler: &LDYHandler{}, SkipCycles: 4},
-	0xAC: {Command: 0xAC, OpcodeName: "LDY", Mode: enums.ModeABS, Handler: &LDYHandler{}, SkipCycles: 4},
-	0xBC: {Command: 0xBC, OpcodeName: "LDY", Mode: enums.ModeABSX, Handler: &LDYHandler{}, SkipCycles: 4},
-	0xEA: {Command: 0xEA, OpcodeName: "NOP", Mode: enums.ModeIMP, Handler: &NOPHandler{}, SkipCycles: 2},
-	0x48: {Command: 0x48, OpcodeName: "PHA", Mode: enums.ModeIMP, Handler: &PHAHandler{}, SkipCycles: 3},
-	0x68: {Command: 0x68, OpcodeName: "PLA", Mode: enums.ModeIMP, Handler: &PLAHandler{}, SkipCycles: 4},
-	0x40: {Command: 0x40, OpcodeName: "RTI", Mode: enums.ModeIMP, Handler: &RTIHandler{}, SkipCycles: 6},
-	0xE9: {Command: 0xE9, OpcodeName: "SBC", Mode: enums.ModeIMM, Handler: &SBCHandler{}, SkipCycles: 2},
-	0xE5: {Command: 0xE5, OpcodeName: "SBC", Mode: enums.ModeZP, Handler: &SBCHandler{}, SkipCycles: 3},
-	0xF5: {Command: 0xF5, OpcodeName: "SBC", Mode: enums.ModeZPX, Handler: &SBCHandler{}, SkipCycles: 4},
-	0xED: {Command: 0xED, OpcodeName: "SBC", Mode: enums.ModeABS, Handler: &SBCHandler{}, SkipCycles: 4},
-	0xFD: {Command: 0xFD, OpcodeName: "SBC", Mode: enums.ModeABSX, Handler: &SBCHandler{}, SkipCycles: 4},
-	0xF9: {Command: 0xF9, OpcodeName: "SBC", Mode: enums.ModeABSY, Handler: &SBCHandler{}, SkipCycles: 4},
-	0xE1: {Command: 0xE1, OpcodeName: "SBC", Mode: enums.ModeINDX, Handler: &SBCHandler{}, SkipCycles: 6},
-	0xF1: {Command: 0xF1, OpcodeName: "SBC", Mode: enums.ModeINDY, Handler: &SBCHandler{}, SkipCycles: 5},
-	0xF8: {Command: 0xF8, OpcodeName: "SED", Mode: enums.ModeIMP, Handler: &SEDHandler{}, SkipCycles: 2},
-	0x86: {Command: 0x86, OpcodeName: "STX", Mode: enums.ModeZP, Handler: &STXHandler{}, SkipCycles: 3},
-	0x96: {Command: 0x96, OpcodeName: "STX", Mode: enums.ModeZPY, Handler: &STXHandler{}, SkipCycles: 4},
-	0x8E: {Command: 0x8E, OpcodeName: "STX", Mode: enums.ModeABS, Handler: &STXHandler{}, SkipCycles: 4},
-	0x84: {Command: 0x84, OpcodeName: "STY", Mode: enums.ModeZP, Handler: &STYHandler{}, SkipCycles: 3},
-	0x94: {Command: 0x94, OpcodeName: "STY", Mode: enums.ModeZPX, Handler: &STYHandler{}, SkipCycles: 4},
-	0x8C: {Command: 0x8C, OpcodeName: "STY", Mode: enums.ModeABS, Handler: &STYHandler{}, SkipCycles: 4},
-	0xAA: {Command: 0xAA, OpcodeName: "TAX", Mode: enums.ModeIMP, Handler: &TAXHandler{}, SkipCycles: 2},
-	0xA8: {Command: 0xA8, OpcodeName: "TAY", Mode: enums.ModeIMP, Handler: &TAYHandler{}, SkipCycles: 2},
-	0xBA: {Command: 0xBA, OpcodeName: "TSX", Mode: enums.ModeIMP, Handler: &TSXHandler{}, SkipCycles: 2},
-	0x8A: {Command: 0x8A, OpcodeName: "TXA", Mode: enums.ModeIMP, Handler: &TXAHandler{}, SkipCycles: 2},
-	0x47: {Command: 0x47, OpcodeName: "SRE", Mode: enums.ModeZP, Handler: &SREHandler{}, SkipCycles: 0},
-	0x57: {Command: 0x57, OpcodeName: "SRE", Mode: enums.ModeZPX, Handler: &SREHandler{}, SkipCycles: 0},
-	0x4F: {Command: 0x4F, OpcodeName: "SRE", Mode: enums.ModeABS, Handler: &SREHandler{}, SkipCycles: 0},
-	0x5F: {Command: 0x5F, OpcodeName: "SRE", Mode: enums.ModeABSX, Handler: &SREHandler{}, SkipCycles: 0},
-	0x5B: {Command: 0x5B, OpcodeName: "SRE", Mode: enums.ModeABSY, Handler: &SREHandler{}, SkipCycles: 0},
-	0x43: {Command: 0x43, OpcodeName: "SRE", Mode: enums.ModeINDX, Handler: &SREHandler{}, SkipCycles: 0},
-	0x53: {Command: 0x53, OpcodeName: "SRE", Mode: enums.ModeINDY, Handler: &SREHandler{}, SkipCycles: 0},
+func init() {
+	commandHandlers[0xB0] = &CommandHandler{OpcodeName: "BCS", Mode: 13, Handler: &BCSHandler{}, SkipCycles: 2}
+	commandHandlers[0xE4] = &CommandHandler{OpcodeName: "CPX", Mode: 2, Handler: &CPXHandler{}, SkipCycles: 3}
+	commandHandlers[0xF7] = &CommandHandler{OpcodeName: "ISB", Mode: 3, Handler: &ISBHandler{}, SkipCycles: 0}
+	commandHandlers[0x0A] = &CommandHandler{OpcodeName: "ASL", Mode: 1, Handler: &ASLHandler{}, SkipCycles: 2}
+	commandHandlers[0x35] = &CommandHandler{OpcodeName: "AND", Mode: 3, Handler: &ANDHandler{}, SkipCycles: 4}
+	commandHandlers[0x49] = &CommandHandler{OpcodeName: "EOR", Mode: 8, Handler: &EORHandler{}, SkipCycles: 2}
+	commandHandlers[0xAD] = &CommandHandler{OpcodeName: "LDA", Mode: 5, Handler: &LDAHandler{}, SkipCycles: 4}
+	commandHandlers[0xFD] = &CommandHandler{OpcodeName: "SBC", Mode: 6, Handler: &SBCHandler{}, SkipCycles: 4}
+	commandHandlers[0x68] = &CommandHandler{OpcodeName: "PLA", Mode: 11, Handler: &PLAHandler{}, SkipCycles: 4}
+	commandHandlers[0x75] = &CommandHandler{OpcodeName: "ADC", Mode: 3, Handler: &ADCHandler{}, SkipCycles: 4}
+	commandHandlers[0xD1] = &CommandHandler{OpcodeName: "CMP", Mode: 10, Handler: &CMPHandler{}, SkipCycles: 5}
+	commandHandlers[0xDD] = &CommandHandler{OpcodeName: "CMP", Mode: 6, Handler: &CMPHandler{}, SkipCycles: 4}
+	commandHandlers[0x73] = &CommandHandler{OpcodeName: "RRA", Mode: 10, Handler: &RRAHandler{}, SkipCycles: 0}
+	commandHandlers[0xB5] = &CommandHandler{OpcodeName: "LDA", Mode: 3, Handler: &LDAHandler{}, SkipCycles: 4}
+	commandHandlers[0x18] = &CommandHandler{OpcodeName: "CLC", Mode: 11, Handler: &CLCHandler{}, SkipCycles: 2}
+	commandHandlers[0x2D] = &CommandHandler{OpcodeName: "AND", Mode: 5, Handler: &ANDHandler{}, SkipCycles: 4}
+	commandHandlers[0x59] = &CommandHandler{OpcodeName: "EOR", Mode: 7, Handler: &EORHandler{}, SkipCycles: 4}
+	commandHandlers[0x6A] = &CommandHandler{OpcodeName: "ROR", Mode: 1, Handler: &RORHandler{}, SkipCycles: 2}
+	commandHandlers[0xED] = &CommandHandler{OpcodeName: "SBC", Mode: 5, Handler: &SBCHandler{}, SkipCycles: 4}
+	commandHandlers[0xF0] = &CommandHandler{OpcodeName: "BEQ", Mode: 13, Handler: &BEQHandler{}, SkipCycles: 2}
+	commandHandlers[0x53] = &CommandHandler{OpcodeName: "SRE", Mode: 10, Handler: &SREHandler{}, SkipCycles: 0}
+	commandHandlers[0x7E] = &CommandHandler{OpcodeName: "ROR", Mode: 6, Handler: &RORHandler{}, SkipCycles: 7}
+	commandHandlers[0x94] = &CommandHandler{OpcodeName: "STY", Mode: 3, Handler: &STYHandler{}, SkipCycles: 4}
+	commandHandlers[0xD5] = &CommandHandler{OpcodeName: "CMP", Mode: 3, Handler: &CMPHandler{}, SkipCycles: 4}
+	commandHandlers[0x08] = &CommandHandler{OpcodeName: "PHP", Mode: 11, Handler: &PHPHandler{}, SkipCycles: 3}
+	commandHandlers[0x1E] = &CommandHandler{OpcodeName: "ASL", Mode: 6, Handler: &ASLHandler{}, SkipCycles: 7}
+	commandHandlers[0x2A] = &CommandHandler{OpcodeName: "ROL", Mode: 1, Handler: &ROLHandler{}, SkipCycles: 2}
+	commandHandlers[0x4D] = &CommandHandler{OpcodeName: "EOR", Mode: 5, Handler: &EORHandler{}, SkipCycles: 4}
+	commandHandlers[0x25] = &CommandHandler{OpcodeName: "AND", Mode: 2, Handler: &ANDHandler{}, SkipCycles: 3}
+	commandHandlers[0x79] = &CommandHandler{OpcodeName: "ADC", Mode: 7, Handler: &ADCHandler{}, SkipCycles: 4}
+	commandHandlers[0x96] = &CommandHandler{OpcodeName: "STX", Mode: 4, Handler: &STXHandler{}, SkipCycles: 4}
+	commandHandlers[0x36] = &CommandHandler{OpcodeName: "ROL", Mode: 3, Handler: &ROLHandler{}, SkipCycles: 6}
+	commandHandlers[0x40] = &CommandHandler{OpcodeName: "RTI", Mode: 11, Handler: &RTIHandler{}, SkipCycles: 6}
+	commandHandlers[0x4C] = &CommandHandler{OpcodeName: "JMP", Mode: 5, Handler: &JMPHandler{}, SkipCycles: 0}
+	commandHandlers[0xEE] = &CommandHandler{OpcodeName: "INC", Mode: 5, Handler: &INCHandler{}, SkipCycles: 6}
+	commandHandlers[0x8E] = &CommandHandler{OpcodeName: "STX", Mode: 5, Handler: &STXHandler{}, SkipCycles: 4}
+	commandHandlers[0xB1] = &CommandHandler{OpcodeName: "LDA", Mode: 10, Handler: &LDAHandler{}, SkipCycles: 5}
+	commandHandlers[0xD0] = &CommandHandler{OpcodeName: "BNE", Mode: 13, Handler: &BNEHandler{}, SkipCycles: 2}
+	commandHandlers[0x05] = &CommandHandler{OpcodeName: "ORA", Mode: 2, Handler: &ORAHandler{}, SkipCycles: 3}
+	commandHandlers[0x0E] = &CommandHandler{OpcodeName: "ASL", Mode: 5, Handler: &ASLHandler{}, SkipCycles: 6}
+	commandHandlers[0x21] = &CommandHandler{OpcodeName: "AND", Mode: 9, Handler: &ANDHandler{}, SkipCycles: 6}
+	commandHandlers[0x69] = &CommandHandler{OpcodeName: "ADC", Mode: 8, Handler: &ADCHandler{}, SkipCycles: 2}
+	commandHandlers[0xC0] = &CommandHandler{OpcodeName: "CPY", Mode: 8, Handler: &CPYHandle{}, SkipCycles: 2}
+	commandHandlers[0xEA] = &CommandHandler{OpcodeName: "NOP", Mode: 11, Handler: &NOPHandler{}, SkipCycles: 2}
+	commandHandlers[0x15] = &CommandHandler{OpcodeName: "ORA", Mode: 3, Handler: &ORAHandler{}, SkipCycles: 4}
+	commandHandlers[0x3F] = &CommandHandler{OpcodeName: "RLA", Mode: 6, Handler: &RLAHandler{}, SkipCycles: 0}
+	commandHandlers[0x58] = &CommandHandler{OpcodeName: "CLI", Mode: 11, Handler: &CLIHandler{}, SkipCycles: 2}
+	commandHandlers[0x77] = &CommandHandler{OpcodeName: "RRA", Mode: 3, Handler: &RRAHandler{}, SkipCycles: 0}
+	commandHandlers[0x2C] = &CommandHandler{OpcodeName: "BIT", Mode: 5, Handler: &BITHandler{}, SkipCycles: 4}
+	commandHandlers[0x38] = &CommandHandler{OpcodeName: "SEC", Mode: 11, Handler: &SECHandler{}, SkipCycles: 2}
+	commandHandlers[0x8D] = &CommandHandler{OpcodeName: "STA", Mode: 5, Handler: &STAHandler{}, SkipCycles: 4}
+	commandHandlers[0xE1] = &CommandHandler{OpcodeName: "SBC", Mode: 9, Handler: &SBCHandler{}, SkipCycles: 6}
+	commandHandlers[0x16] = &CommandHandler{OpcodeName: "ASL", Mode: 3, Handler: &ASLHandler{}, SkipCycles: 6}
+	commandHandlers[0xAC] = &CommandHandler{OpcodeName: "LDY", Mode: 5, Handler: &LDYHandler{}, SkipCycles: 4}
+	commandHandlers[0xB9] = &CommandHandler{OpcodeName: "LDA", Mode: 7, Handler: &LDAHandler{}, SkipCycles: 4}
+	commandHandlers[0xBE] = &CommandHandler{OpcodeName: "LDX", Mode: 7, Handler: &LDXHandler{}, SkipCycles: 4}
+	commandHandlers[0xDE] = &CommandHandler{OpcodeName: "DEC", Mode: 6, Handler: &DECHandler{}, SkipCycles: 7}
+	commandHandlers[0x6E] = &CommandHandler{OpcodeName: "ROR", Mode: 5, Handler: &RORHandler{}, SkipCycles: 6}
+	commandHandlers[0x6F] = &CommandHandler{OpcodeName: "RRA", Mode: 5, Handler: &RRAHandler{}, SkipCycles: 0}
+	commandHandlers[0xC8] = &CommandHandler{OpcodeName: "INY", Mode: 11, Handler: &INYHandler{}, SkipCycles: 2}
+	commandHandlers[0xCA] = &CommandHandler{OpcodeName: "DEX", Mode: 11, Handler: &DEXHandler{}, SkipCycles: 2}
+	commandHandlers[0xD9] = &CommandHandler{OpcodeName: "CMP", Mode: 7, Handler: &CMPHandler{}, SkipCycles: 4}
+	commandHandlers[0xF8] = &CommandHandler{OpcodeName: "SED", Mode: 11, Handler: &SEDHandler{}, SkipCycles: 2}
+	commandHandlers[0x13] = &CommandHandler{OpcodeName: "SLO", Mode: 10, Handler: &SLOHandler{}, SkipCycles: 0}
+	commandHandlers[0x1D] = &CommandHandler{OpcodeName: "ORA", Mode: 6, Handler: &ORAHandler{}, SkipCycles: 4}
+	commandHandlers[0x2E] = &CommandHandler{OpcodeName: "ROL", Mode: 5, Handler: &ROLHandler{}, SkipCycles: 6}
+	commandHandlers[0x60] = &CommandHandler{OpcodeName: "RTS", Mode: 11, Handler: &RTSHandler{}, SkipCycles: 6}
+	commandHandlers[0xFB] = &CommandHandler{OpcodeName: "ISB", Mode: 7, Handler: &ISBHandler{}, SkipCycles: 0}
+	commandHandlers[0x29] = &CommandHandler{OpcodeName: "AND", Mode: 8, Handler: &ANDHandler{}, SkipCycles: 2}
+	commandHandlers[0x8A] = &CommandHandler{OpcodeName: "TXA", Mode: 11, Handler: &TXAHandler{}, SkipCycles: 2}
+	commandHandlers[0x91] = &CommandHandler{OpcodeName: "STA", Mode: 10, Handler: &STAHandler{}, SkipCycles: 6}
+	commandHandlers[0xF5] = &CommandHandler{OpcodeName: "SBC", Mode: 3, Handler: &SBCHandler{}, SkipCycles: 4}
+	commandHandlers[0x24] = &CommandHandler{OpcodeName: "BIT", Mode: 2, Handler: &BITHandler{}, SkipCycles: 3}
+	commandHandlers[0x33] = &CommandHandler{OpcodeName: "RLA", Mode: 10, Handler: &RLAHandler{}, SkipCycles: 0}
+	commandHandlers[0xB4] = &CommandHandler{OpcodeName: "LDY", Mode: 3, Handler: &LDYHandler{}, SkipCycles: 4}
+	commandHandlers[0xB6] = &CommandHandler{OpcodeName: "LDX", Mode: 4, Handler: &LDXHandler{}, SkipCycles: 4}
+	commandHandlers[0x63] = &CommandHandler{OpcodeName: "RRA", Mode: 9, Handler: &RRAHandler{}, SkipCycles: 0}
+	commandHandlers[0x67] = &CommandHandler{OpcodeName: "RRA", Mode: 2, Handler: &RRAHandler{}, SkipCycles: 0}
+	commandHandlers[0xBC] = &CommandHandler{OpcodeName: "LDY", Mode: 6, Handler: &LDYHandler{}, SkipCycles: 4}
+	commandHandlers[0xE7] = &CommandHandler{OpcodeName: "ISB", Mode: 2, Handler: &ISBHandler{}, SkipCycles: 0}
+	commandHandlers[0x28] = &CommandHandler{OpcodeName: "PLP", Mode: 11, Handler: &PLPHandler{}, SkipCycles: 4}
+	commandHandlers[0x41] = &CommandHandler{OpcodeName: "EOR", Mode: 9, Handler: &EORHandler{}, SkipCycles: 6}
+	commandHandlers[0x5B] = &CommandHandler{OpcodeName: "SRE", Mode: 7, Handler: &SREHandler{}, SkipCycles: 0}
+	commandHandlers[0x61] = &CommandHandler{OpcodeName: "ADC", Mode: 9, Handler: &ADCHandler{}, SkipCycles: 6}
+	commandHandlers[0xEF] = &CommandHandler{OpcodeName: "ISB", Mode: 5, Handler: &ISBHandler{}, SkipCycles: 0}
+	commandHandlers[0x6D] = &CommandHandler{OpcodeName: "ADC", Mode: 5, Handler: &ADCHandler{}, SkipCycles: 4}
+	commandHandlers[0x84] = &CommandHandler{OpcodeName: "STY", Mode: 2, Handler: &STYHandler{}, SkipCycles: 3}
+	commandHandlers[0xA8] = &CommandHandler{OpcodeName: "TAY", Mode: 11, Handler: &TAYHandler{}, SkipCycles: 2}
+	commandHandlers[0xE0] = &CommandHandler{OpcodeName: "CPX", Mode: 8, Handler: &CPXHandler{}, SkipCycles: 2}
+	commandHandlers[0x78] = &CommandHandler{OpcodeName: "SEI", Mode: 11, Handler: &SEIHandler{}, SkipCycles: 2}
+	commandHandlers[0xA9] = &CommandHandler{OpcodeName: "LDA", Mode: 8, Handler: &LDAHandler{}, SkipCycles: 2}
+	commandHandlers[0xEC] = &CommandHandler{OpcodeName: "CPX", Mode: 5, Handler: &CPXHandler{}, SkipCycles: 4}
+	commandHandlers[0xF1] = &CommandHandler{OpcodeName: "SBC", Mode: 10, Handler: &SBCHandler{}, SkipCycles: 5}
+	commandHandlers[0x0D] = &CommandHandler{OpcodeName: "ORA", Mode: 5, Handler: &ORAHandler{}, SkipCycles: 4}
+	commandHandlers[0x4F] = &CommandHandler{OpcodeName: "SRE", Mode: 5, Handler: &SREHandler{}, SkipCycles: 0}
+	commandHandlers[0x5E] = &CommandHandler{OpcodeName: "LSR", Mode: 6, Handler: &LSRHandler{}, SkipCycles: 7}
+	commandHandlers[0x76] = &CommandHandler{OpcodeName: "ROR", Mode: 3, Handler: &RORHandler{}, SkipCycles: 6}
+	commandHandlers[0xAA] = &CommandHandler{OpcodeName: "TAX", Mode: 11, Handler: &TAXHandler{}, SkipCycles: 2}
+	commandHandlers[0x10] = &CommandHandler{OpcodeName: "BPL", Mode: 13, Handler: &BPLHandler{}, SkipCycles: 2}
+	commandHandlers[0x2F] = &CommandHandler{OpcodeName: "RLA", Mode: 5, Handler: &RLAHandler{}, SkipCycles: 0}
+	commandHandlers[0x3E] = &CommandHandler{OpcodeName: "ROL", Mode: 6, Handler: &ROLHandler{}, SkipCycles: 7}
+	commandHandlers[0x46] = &CommandHandler{OpcodeName: "LSR", Mode: 2, Handler: &LSRHandler{}, SkipCycles: 5}
+	commandHandlers[0xFF] = &CommandHandler{OpcodeName: "ISB", Mode: 6, Handler: &ISBHandler{}, SkipCycles: 0}
+	commandHandlers[0x03] = &CommandHandler{OpcodeName: "SLO", Mode: 9, Handler: &SLOHandler{}, SkipCycles: 0}
+	commandHandlers[0x39] = &CommandHandler{OpcodeName: "AND", Mode: 7, Handler: &ANDHandler{}, SkipCycles: 4}
+	commandHandlers[0x7F] = &CommandHandler{OpcodeName: "RRA", Mode: 6, Handler: &RRAHandler{}, SkipCycles: 0}
+	commandHandlers[0xCC] = &CommandHandler{OpcodeName: "CPY", Mode: 5, Handler: &CPYHandle{}, SkipCycles: 4}
+	commandHandlers[0xE3] = &CommandHandler{OpcodeName: "ISB", Mode: 9, Handler: &ISBHandler{}, SkipCycles: 0}
+	commandHandlers[0xE8] = &CommandHandler{OpcodeName: "INX", Mode: 11, Handler: &INXHandler{}, SkipCycles: 2}
+	commandHandlers[0x5F] = &CommandHandler{OpcodeName: "SRE", Mode: 6, Handler: &SREHandler{}, SkipCycles: 0}
+	commandHandlers[0x81] = &CommandHandler{OpcodeName: "STA", Mode: 9, Handler: &STAHandler{}, SkipCycles: 6}
+	commandHandlers[0x9A] = &CommandHandler{OpcodeName: "TXS", Mode: 11, Handler: &TXSHandler{}, SkipCycles: 2}
+	commandHandlers[0xC6] = &CommandHandler{OpcodeName: "DEC", Mode: 2, Handler: &DECHandler{}, SkipCycles: 5}
+	commandHandlers[0x86] = &CommandHandler{OpcodeName: "STX", Mode: 2, Handler: &STXHandler{}, SkipCycles: 3}
+	commandHandlers[0xC5] = &CommandHandler{OpcodeName: "CMP", Mode: 2, Handler: &CMPHandler{}, SkipCycles: 3}
+	commandHandlers[0x0F] = &CommandHandler{OpcodeName: "SLO", Mode: 5, Handler: &SLOHandler{}, SkipCycles: 0}
+	commandHandlers[0x1B] = &CommandHandler{OpcodeName: "SLO", Mode: 7, Handler: &SLOHandler{}, SkipCycles: 0}
+	commandHandlers[0x4E] = &CommandHandler{OpcodeName: "LSR", Mode: 5, Handler: &LSRHandler{}, SkipCycles: 6}
+	commandHandlers[0x85] = &CommandHandler{OpcodeName: "STA", Mode: 2, Handler: &STAHandler{}, SkipCycles: 3}
+	commandHandlers[0x71] = &CommandHandler{OpcodeName: "ADC", Mode: 10, Handler: &ADCHandler{}, SkipCycles: 5}
+	commandHandlers[0xA0] = &CommandHandler{OpcodeName: "LDY", Mode: 8, Handler: &LDYHandler{}, SkipCycles: 2}
+	commandHandlers[0xA6] = &CommandHandler{OpcodeName: "LDX", Mode: 2, Handler: &LDXHandler{}, SkipCycles: 3}
+	commandHandlers[0xF9] = &CommandHandler{OpcodeName: "SBC", Mode: 7, Handler: &SBCHandler{}, SkipCycles: 4}
+	commandHandlers[0x01] = &CommandHandler{OpcodeName: "ORA", Mode: 9, Handler: &ORAHandler{}, SkipCycles: 6}
+	commandHandlers[0x45] = &CommandHandler{OpcodeName: "EOR", Mode: 2, Handler: &EORHandler{}, SkipCycles: 3}
+	commandHandlers[0x51] = &CommandHandler{OpcodeName: "EOR", Mode: 10, Handler: &EORHandler{}, SkipCycles: 5}
+	commandHandlers[0x65] = &CommandHandler{OpcodeName: "ADC", Mode: 2, Handler: &ADCHandler{}, SkipCycles: 3}
+	commandHandlers[0xA4] = &CommandHandler{OpcodeName: "LDY", Mode: 2, Handler: &LDYHandler{}, SkipCycles: 3}
+	commandHandlers[0x00] = &CommandHandler{OpcodeName: "BRK", Mode: 11, Handler: &BRKHandler{}, SkipCycles: 7}
+	commandHandlers[0x23] = &CommandHandler{OpcodeName: "RLA", Mode: 9, Handler: &RLAHandler{}, SkipCycles: 0}
+	commandHandlers[0x7D] = &CommandHandler{OpcodeName: "ADC", Mode: 6, Handler: &ADCHandler{}, SkipCycles: 4}
+	commandHandlers[0x88] = &CommandHandler{OpcodeName: "DEY", Mode: 11, Handler: &DEYHandler{}, SkipCycles: 2}
+	commandHandlers[0xC1] = &CommandHandler{OpcodeName: "CMP", Mode: 9, Handler: &CMPHandler{}, SkipCycles: 6}
+	commandHandlers[0xC9] = &CommandHandler{OpcodeName: "CMP", Mode: 8, Handler: &CMPHandler{}, SkipCycles: 2}
+	commandHandlers[0xD8] = &CommandHandler{OpcodeName: "CLD", Mode: 11, Handler: &CLDHandler{}, SkipCycles: 2}
+	commandHandlers[0xF6] = &CommandHandler{OpcodeName: "INC", Mode: 3, Handler: &INCHandler{}, SkipCycles: 6}
+	commandHandlers[0x06] = &CommandHandler{OpcodeName: "ASL", Mode: 2, Handler: &ASLHandler{}, SkipCycles: 5}
+	commandHandlers[0x3B] = &CommandHandler{OpcodeName: "RLA", Mode: 7, Handler: &RLAHandler{}, SkipCycles: 0}
+	commandHandlers[0x5D] = &CommandHandler{OpcodeName: "EOR", Mode: 6, Handler: &EORHandler{}, SkipCycles: 4}
+	commandHandlers[0x98] = &CommandHandler{OpcodeName: "TYA", Mode: 11, Handler: &TYAHandler{}, SkipCycles: 2}
+	commandHandlers[0x7B] = &CommandHandler{OpcodeName: "RRA", Mode: 7, Handler: &RRAHandler{}, SkipCycles: 0}
+	commandHandlers[0xC4] = &CommandHandler{OpcodeName: "CPY", Mode: 2, Handler: &CPYHandle{}, SkipCycles: 3}
+	commandHandlers[0xF3] = &CommandHandler{OpcodeName: "ISB", Mode: 10, Handler: &ISBHandler{}, SkipCycles: 0}
+	commandHandlers[0x09] = &CommandHandler{OpcodeName: "ORA", Mode: 8, Handler: &ORAHandler{}, SkipCycles: 2}
+	commandHandlers[0x55] = &CommandHandler{OpcodeName: "EOR", Mode: 3, Handler: &EORHandler{}, SkipCycles: 4}
+	commandHandlers[0x57] = &CommandHandler{OpcodeName: "SRE", Mode: 3, Handler: &SREHandler{}, SkipCycles: 0}
+	commandHandlers[0x6C] = &CommandHandler{OpcodeName: "JMP", Mode: 12, Handler: &JMPHandler{}, SkipCycles: 0}
+	commandHandlers[0x95] = &CommandHandler{OpcodeName: "STA", Mode: 3, Handler: &STAHandler{}, SkipCycles: 4}
+	commandHandlers[0xA1] = &CommandHandler{OpcodeName: "LDA", Mode: 9, Handler: &LDAHandler{}, SkipCycles: 6}
+	commandHandlers[0xB8] = &CommandHandler{OpcodeName: "CLV", Mode: 11, Handler: &CLVHandler{}, SkipCycles: 2}
+	commandHandlers[0xCD] = &CommandHandler{OpcodeName: "CMP", Mode: 5, Handler: &CMPHandler{}, SkipCycles: 4}
+	commandHandlers[0x1F] = &CommandHandler{OpcodeName: "SLO", Mode: 6, Handler: &SLOHandler{}, SkipCycles: 0}
+	commandHandlers[0x27] = &CommandHandler{OpcodeName: "RLA", Mode: 2, Handler: &RLAHandler{}, SkipCycles: 0}
+	commandHandlers[0x30] = &CommandHandler{OpcodeName: "BMI", Mode: 13, Handler: &BMIHandler{}, SkipCycles: 2}
+	commandHandlers[0x47] = &CommandHandler{OpcodeName: "SRE", Mode: 2, Handler: &SREHandler{}, SkipCycles: 0}
+	commandHandlers[0x19] = &CommandHandler{OpcodeName: "ORA", Mode: 7, Handler: &ORAHandler{}, SkipCycles: 4}
+	commandHandlers[0x31] = &CommandHandler{OpcodeName: "AND", Mode: 10, Handler: &ANDHandler{}, SkipCycles: 5}
+	commandHandlers[0x37] = &CommandHandler{OpcodeName: "RLA", Mode: 3, Handler: &RLAHandler{}, SkipCycles: 0}
+	commandHandlers[0xD6] = &CommandHandler{OpcodeName: "DEC", Mode: 3, Handler: &DECHandler{}, SkipCycles: 6}
+	commandHandlers[0x9D] = &CommandHandler{OpcodeName: "STA", Mode: 6, Handler: &STAHandler{}, SkipCycles: 5}
+	commandHandlers[0xE5] = &CommandHandler{OpcodeName: "SBC", Mode: 2, Handler: &SBCHandler{}, SkipCycles: 3}
+	commandHandlers[0x11] = &CommandHandler{OpcodeName: "ORA", Mode: 10, Handler: &ORAHandler{}, SkipCycles: 5}
+	commandHandlers[0x17] = &CommandHandler{OpcodeName: "SLO", Mode: 3, Handler: &SLOHandler{}, SkipCycles: 0}
+	commandHandlers[0x50] = &CommandHandler{OpcodeName: "BVC", Mode: 13, Handler: &BVCHandler{}, SkipCycles: 2}
+	commandHandlers[0x99] = &CommandHandler{OpcodeName: "STA", Mode: 7, Handler: &STAHandler{}, SkipCycles: 5}
+	commandHandlers[0x70] = &CommandHandler{OpcodeName: "BVS", Mode: 13, Handler: &BVSHandler{}, SkipCycles: 2}
+	commandHandlers[0x8C] = &CommandHandler{OpcodeName: "STY", Mode: 5, Handler: &STYHandler{}, SkipCycles: 4}
+	commandHandlers[0xBA] = &CommandHandler{OpcodeName: "TSX", Mode: 11, Handler: &TSXHandler{}, SkipCycles: 2}
+	commandHandlers[0xBD] = &CommandHandler{OpcodeName: "LDA", Mode: 6, Handler: &LDAHandler{}, SkipCycles: 4}
+	commandHandlers[0x07] = &CommandHandler{OpcodeName: "SLO", Mode: 2, Handler: &SLOHandler{}, SkipCycles: 0}
+	commandHandlers[0x20] = &CommandHandler{OpcodeName: "JSR", Mode: 5, Handler: &JSRHandler{}, SkipCycles: 0}
+	commandHandlers[0x48] = &CommandHandler{OpcodeName: "PHA", Mode: 11, Handler: &PHAHandler{}, SkipCycles: 3}
+	commandHandlers[0x56] = &CommandHandler{OpcodeName: "LSR", Mode: 3, Handler: &LSRHandler{}, SkipCycles: 6}
+	commandHandlers[0xCE] = &CommandHandler{OpcodeName: "DEC", Mode: 5, Handler: &DECHandler{}, SkipCycles: 6}
+	commandHandlers[0xE9] = &CommandHandler{OpcodeName: "SBC", Mode: 8, Handler: &SBCHandler{}, SkipCycles: 2}
+	commandHandlers[0xFE] = &CommandHandler{OpcodeName: "INC", Mode: 6, Handler: &INCHandler{}, SkipCycles: 7}
+	commandHandlers[0x26] = &CommandHandler{OpcodeName: "ROL", Mode: 2, Handler: &ROLHandler{}, SkipCycles: 5}
+	commandHandlers[0x3D] = &CommandHandler{OpcodeName: "AND", Mode: 6, Handler: &ANDHandler{}, SkipCycles: 4}
+	commandHandlers[0x4A] = &CommandHandler{OpcodeName: "LSR", Mode: 1, Handler: &LSRHandler{}, SkipCycles: 2}
+	commandHandlers[0xAE] = &CommandHandler{OpcodeName: "LDX", Mode: 5, Handler: &LDXHandler{}, SkipCycles: 4}
+	commandHandlers[0xA5] = &CommandHandler{OpcodeName: "LDA", Mode: 2, Handler: &LDAHandler{}, SkipCycles: 3}
+	commandHandlers[0xE6] = &CommandHandler{OpcodeName: "INC", Mode: 2, Handler: &INCHandler{}, SkipCycles: 5}
+	commandHandlers[0x43] = &CommandHandler{OpcodeName: "SRE", Mode: 9, Handler: &SREHandler{}, SkipCycles: 0}
+	commandHandlers[0x66] = &CommandHandler{OpcodeName: "ROR", Mode: 2, Handler: &RORHandler{}, SkipCycles: 5}
+	commandHandlers[0x90] = &CommandHandler{OpcodeName: "BCC", Mode: 13, Handler: &BCCHandler{}, SkipCycles: 2}
+	commandHandlers[0xA2] = &CommandHandler{OpcodeName: "LDX", Mode: 8, Handler: &LDXHandler{}, SkipCycles: 2}
 }
