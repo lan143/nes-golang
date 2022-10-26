@@ -132,12 +132,7 @@ func (c *Cpu) getByte(address uint16) byte {
 	if address >= 0x2000 && address < 0x4000 {
 		address &= 0x2007
 
-		switch address {
-		case 0x2002:
-			return c.b.ReadByCPU(address)
-		case 0x2004:
-			return c.b.ReadByCPU(address)
-		case 0x2007:
+		if address == 0x2002 || address == 0x2004 || address == 0x2007 {
 			return c.b.ReadByCPU(address)
 		}
 	}

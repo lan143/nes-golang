@@ -1,7 +1,6 @@
 package registers
 
 import (
-	"math"
 	"unsafe"
 )
 
@@ -19,8 +18,7 @@ func (r *Register[T]) Set(value T) {
 
 func (r *Register[T]) SetLowerByte(value byte) {
 	var andVal T
-	andVal = T(math.Pow(2, float64(r.GetWidth())) - 1)
-	andVal <<= 8
+	andVal = ((1 << r.GetWidth()) - 1) << 8
 	upperBytes := r.value & andVal
 	r.value = upperBytes | T(value)
 }

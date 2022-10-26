@@ -1,15 +1,17 @@
 package ram
 
 type Ram struct {
-	memory []byte
+	memory    []byte
+	memoryLen int
 }
 
 func (r *Ram) Init(size int) {
 	r.memory = make([]byte, size)
+	r.memoryLen = len(r.memory)
 }
 
 func (r *Ram) GetByte(address uint16) byte {
-	address &= uint16(len(r.memory)) - 1
+	address &= uint16(r.memoryLen) - 1
 
 	return r.memory[address]
 }
