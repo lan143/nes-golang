@@ -90,6 +90,7 @@ func (c *Cpu) processCommand() error {
 	command := c.getByte(c.PC)
 	d := commandHandlers[command]
 	if d == nil {
+		/*panic(fmt.Sprintf("(0x%04X) handler for command 0x%X not found", c.PC, command))*/
 		c.PC++
 
 		return fmt.Errorf("handler for command 0x%X not found", command)
@@ -99,6 +100,8 @@ func (c *Cpu) processCommand() error {
 	if err != nil {
 		return err
 	}
+
+	//c.logExecution(c.PC, d.OpcodeName, d.Mode, operand)
 
 	err = d.Handler.Handle(c, operand, d.Mode)
 
