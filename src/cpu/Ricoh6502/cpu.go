@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"main/src/bus"
-	"main/src/mapper"
+	"main/src/cartridge"
 	"main/src/ram"
 )
 
@@ -25,7 +25,7 @@ type Cpu struct {
 	P    PRegister // регистр состояния;
 	ram  *ram.Ram  // 2KB internal RAM
 
-	mapper           mapper.Mapper
+	cartridge        *cartridge.Cartridge
 	hasInterrupt     bool
 	interruptHandler InterruptHandler
 
@@ -34,8 +34,8 @@ type Cpu struct {
 	skipCycles uint16
 }
 
-func (c *Cpu) Init(mapper mapper.Mapper, ram *ram.Ram) {
-	c.mapper = mapper
+func (c *Cpu) Init(cartridge *cartridge.Cartridge, ram *ram.Ram) {
+	c.cartridge = cartridge
 	c.ram = ram
 
 	c.P.Init()
@@ -140,11 +140,15 @@ func (c *Cpu) getByte(address uint16) byte {
 		}
 	}
 
-	if address == 0x4016 {
+	if address >= 0x4000 && address < 0x4020 {
 		return c.b.ReadByCPU(address)
 	}
 
-	return c.mapper.GetByte(address)
+	if address >= 0x8000 {
+		return c.cartridge.GetByte(address)
+	}
+
+	return 0
 }
 
 func (c *Cpu) getUint16(address uint16) uint16 {
@@ -206,7 +210,7 @@ func (c *Cpu) setByte(address uint16, value byte) {
 	}
 
 	if address >= 0x8000 {
-		c.mapper.PutByte(address, value)
+		c.cartridge.PutByte(address, value)
 	}
 }
 

@@ -1,16 +1,13 @@
 package mapper
 
 import (
-	"main/src/mapper/enum"
-	"main/src/rom"
+	"main/src/enum"
 )
 
 type Mapper interface {
-	LoadRom(rom rom.Rom)
-	GetByte(address uint16) byte
-	GetChrByte(address uint16) byte
-	PutByte(address uint16, value byte)
-	PutChrByte(address uint16, value byte)
-	HasChrRom() bool
+	Init(prgRomSize byte) error
 	GetMirroringType() enum.MirroringType
+	MapPrgRom(address uint16) uint32
+	MapChrRom(address uint16) uint32
+	PutByte(address uint16, value byte)
 }

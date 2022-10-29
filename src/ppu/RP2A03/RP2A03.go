@@ -2,19 +2,19 @@ package RP2A03
 
 import (
 	"main/src/bus"
+	"main/src/cartridge"
 	"main/src/display"
-	"main/src/mapper"
-	"main/src/mapper/enum"
+	"main/src/enum"
 	"main/src/ppu/RP2A03/registers"
 	"main/src/ppu/RP2A03/sprites"
 	"main/src/ram"
 )
 
 type PPU struct {
-	mapper  mapper.Mapper
-	display display.Display
-	bus     *bus.Bus
-	palette Palette
+	cartridge *cartridge.Cartridge
+	display   display.Display
+	bus       *bus.Bus
+	palette   Palette
 
 	frame    uint64
 	scanline uint16
@@ -63,8 +63,8 @@ type PPU struct {
 	cpuRam *ram.Ram
 }
 
-func (p *PPU) Init(mapper mapper.Mapper, display display.Display, cpuRam *ram.Ram) {
-	p.mapper = mapper
+func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuRam *ram.Ram) {
+	p.cartridge = cartridge
 	p.display = display
 	p.palette.Init()
 	p.cpuRam = cpuRam
@@ -572,7 +572,7 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 
 	var baseAddress uint16
 
-	switch p.mapper.GetMirroringType() {
+	switch p.cartridge.GetMirroringType() {
 	case enum.SingleScreen:
 		baseAddress = 0x2000
 		break
@@ -616,8 +616,8 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 
 func (p *PPU) setByte(address uint16, value byte) {
 	// 0x0000 - 0x1FFF is mapped with cartridge's CHR-ROM if it exists
-	if address < 0x2000 && p.mapper.HasChrRom() {
-		p.mapper.PutChrByte(address, value)
+	if address < 0x2000 && p.cartridge.HasChrRom() {
+		p.cartridge.PutByte(address, value)
 		return
 	}
 
@@ -665,8 +665,8 @@ func (p *PPU) setByte(address uint16, value byte) {
 
 func (p *PPU) getByte(address uint16) byte {
 	// 0x0000 - 0x1FFF is mapped with cartridge's CHR-ROM if it exists
-	if address < 0x2000 && p.mapper.HasChrRom() {
-		return p.mapper.GetChrByte(address)
+	if address < 0x2000 && p.cartridge.HasChrRom() {
+		return p.cartridge.GetByte(address)
 	}
 
 	// 0x0000 - 0x0FFF: pattern table 0

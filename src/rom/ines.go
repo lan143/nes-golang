@@ -2,7 +2,7 @@ package rom
 
 import (
 	"log"
-	"main/src/mapper/enum"
+	"main/src/enum"
 	"os"
 )
 
@@ -15,7 +15,7 @@ type INes struct {
 	flags9     uint8 // TV system (rarely used extension)
 	flags10    uint8 // TV system, PRG-RAM presence (unofficial, rarely used extension)
 
-	Data []byte
+	data []byte
 }
 
 func (n *INes) GetPrgRomSize() uint8 {
@@ -42,7 +42,7 @@ func (n *INes) Load(file *os.File) error {
 
 	log.Printf("ROM size: %d", fi.Size())
 
-	n.Data = make([]byte, fi.Size()-0x10)
+	n.data = make([]byte, fi.Size()-0x10)
 
 	err = n.loadHeader(file)
 	if err != nil {
@@ -51,7 +51,7 @@ func (n *INes) Load(file *os.File) error {
 
 	_, err = file.Seek(0x10, 0)
 
-	size, err := file.Read(n.Data)
+	size, err := file.Read(n.data)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,11 @@ func (n *INes) Load(file *os.File) error {
 }
 
 func (n *INes) GetData() []byte {
-	return n.Data
+	return n.data
+}
+
+func (n *INes) GetByte(address uint32) byte {
+	return n.data[address]
 }
 
 func (n *INes) GetMapperId() byte {

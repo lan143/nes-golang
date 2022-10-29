@@ -7,6 +7,7 @@ import (
 	"main/src/audio/null"
 	"main/src/audio/oto"
 	"main/src/bus"
+	"main/src/cartridge"
 	"main/src/cpu"
 	"main/src/display"
 	"main/src/joypad"
@@ -22,6 +23,7 @@ func BuildContainer() *dig.Container {
 	processError(container.Provide(NewNes))
 	processError(container.Provide(rom.NewFactory))
 	processError(container.Provide(mapper.NewFactory))
+	processError(container.Provide(cartridge.NewCartridge))
 	processError(container.Provide(cpu.NewFactory))
 	processError(container.Provide(ppu.NewFactory))
 	processError(container.Provide(display.NewFactory))

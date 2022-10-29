@@ -1,14 +1,11 @@
 package mmc1
 
 import (
-	"log"
-	"main/src/mapper/enum"
-	"main/src/rom"
+	"main/src/enum"
 )
 
 type Mapper struct {
-	data []byte
-	rom  rom.Rom
+	prgRomSize byte
 
 	controlRegister  byte
 	chrBank0Register byte
@@ -17,10 +14,6 @@ type Mapper struct {
 	latch            byte
 
 	registerWriteCount byte
-}
-
-func (m *Mapper) HasChrRom() bool {
-	return true
 }
 
 func (m *Mapper) GetMirroringType() enum.MirroringType {
@@ -36,17 +29,14 @@ func (m *Mapper) GetMirroringType() enum.MirroringType {
 	}
 }
 
-func (m *Mapper) LoadRom(rom rom.Rom) {
+func (m *Mapper) Init(prgRomSize byte) error {
 	m.controlRegister = 0x0C
-	m.rom = rom
-	m.data = rom.GetData()
+	m.prgRomSize = prgRomSize
 
-	log.Printf("Mapper: MMC1")
-	log.Printf("PRG ROM Size: %d", m.rom.GetPrgRomSize())
-	log.Printf("CHR ROM Size: %d", m.rom.GetChrRomSize())
+	return nil
 }
 
-func (m *Mapper) GetByte(address uint16) byte {
+func (m *Mapper) MapPrgRom(address uint16) uint32 {
 	var bank uint32 = 0
 	offset := uint32(address & 0x3FFF)
 	bankNum := uint32(m.prgBankRegister & 0x0F)
@@ -63,13 +53,13 @@ func (m *Mapper) GetByte(address uint16) byte {
 		}
 	} else if prgRomBankMode == 3 { // fix last bank at $C000 and switch 16 KB bank at $8000
 		if address >= 0xC000 {
-			bank = uint32(m.rom.GetPrgRomSize() - 1)
+			bank = uint32(m.prgRomSize - 1)
 		} else {
 			bank = bankNum
 		}
 	}
 
-	return m.data[bank*0x4000+offset]
+	return bank*0x4000 + offset
 }
 
 func (m *Mapper) PutByte(address uint16, value byte) {
@@ -106,7 +96,7 @@ func (m *Mapper) PutByte(address uint16, value byte) {
 	}
 }
 
-func (m *Mapper) GetChrByte(address uint16) byte {
+func (m *Mapper) MapChrRom(address uint16) uint32 {
 	var bank uint32 = 0
 	offset := uint32(address & 0x0FFF)
 
@@ -122,8 +112,5 @@ func (m *Mapper) GetChrByte(address uint16) byte {
 		}
 	}
 
-	return m.data[uint32(m.rom.GetPrgRomSize())*0x4000+bank*0x1000+offset]
-}
-
-func (m *Mapper) PutChrByte(address uint16, value byte) {
+	return bank*0x1000 + offset
 }

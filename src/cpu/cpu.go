@@ -1,12 +1,12 @@
 package cpu
 
 import (
-	"main/src/mapper"
+	"main/src/cartridge"
 	"main/src/ram"
 )
 
 type CPU interface {
-	Init(mapper mapper.Mapper, ram *ram.Ram)
+	Init(cartridge *cartridge.Cartridge, ram *ram.Ram)
 	Reset()
 	Run()
 }

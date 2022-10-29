@@ -5,11 +5,10 @@ import (
 	"main/src/apu"
 	"main/src/audio"
 	"main/src/bus"
+	"main/src/cartridge"
 	"main/src/cpu"
 	"main/src/display"
 	"main/src/joypad"
-	"main/src/mapper"
-	"main/src/mapper/enum"
 	"main/src/ppu"
 	"main/src/ram"
 	"main/src/rom"
@@ -18,7 +17,6 @@ import (
 
 type Nes struct {
 	romFactory     *rom.Factory
-	mapperFactory  *mapper.Factory
 	cpuFactory     *cpu.Factory
 	ppuFactory     *ppu.Factory
 	displayFactory *display.Factory
@@ -27,11 +25,12 @@ type Nes struct {
 
 	bus *bus.Bus
 
-	cpu     cpu.CPU
-	ppu     ppu.PPU
-	display display.Display
-	apu     apu.APU
-	joypad  *joypad.JoyPad
+	cpu       cpu.CPU
+	ppu       ppu.PPU
+	display   display.Display
+	apu       apu.APU
+	joypad    *joypad.JoyPad
+	cartridge *cartridge.Cartridge
 }
 
 func (n *Nes) Init() error {
@@ -48,12 +47,10 @@ func (n *Nes) Init() error {
 		return err
 	}
 
-	m, err := n.mapperFactory.GetMapper(enum.Id(r.GetMapperId()))
+	err = n.cartridge.LoadRom(r)
 	if err != nil {
 		return err
 	}
-
-	m.LoadRom(r)
 
 	n.joypad.Init()
 
@@ -64,10 +61,10 @@ func (n *Nes) Init() error {
 	cpuRam.Init(0x0800)
 
 	n.cpu = n.cpuFactory.GetCPU()
-	n.cpu.Init(m, cpuRam)
+	n.cpu.Init(n.cartridge, cpuRam)
 
 	n.ppu = n.ppuFactory.GetPPU()
-	n.ppu.Init(m, n.display, cpuRam)
+	n.ppu.Init(n.cartridge, n.display, cpuRam)
 
 	aud := n.audioFactory.GetAudio()
 	err = aud.Init()
@@ -110,23 +107,23 @@ func (n *Nes) Run(ctx context.Context) {
 func NewNes(
 	bus *bus.Bus,
 	romFactory *rom.Factory,
-	mapperFactory *mapper.Factory,
 	cpuFactory *cpu.Factory,
 	ppuFactory *ppu.Factory,
 	displayFactory *display.Factory,
 	apuFactory *apu.Factory,
 	audioFactory *audio.Factory,
 	joypad *joypad.JoyPad,
+	cartridge *cartridge.Cartridge,
 ) *Nes {
 	return &Nes{
 		bus:            bus,
 		romFactory:     romFactory,
-		mapperFactory:  mapperFactory,
 		cpuFactory:     cpuFactory,
 		ppuFactory:     ppuFactory,
 		displayFactory: displayFactory,
 		apuFactory:     apuFactory,
 		audioFactory:   audioFactory,
 		joypad:         joypad,
+		cartridge:      cartridge,
 	}
 }
