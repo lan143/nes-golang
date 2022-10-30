@@ -779,7 +779,7 @@ func (p *PPU) renderPixel() {
 		p.ppuStatus.SetSpriteZeroHit()
 	}
 
-	p.display.RenderPixel(x, y, c)
+	p.display.RenderPixel(int(x), int(y), c)
 }
 
 func NewPPU(b *bus.Bus) *PPU {
