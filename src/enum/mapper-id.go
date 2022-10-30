@@ -6,7 +6,7 @@ const (
 	MapperNROM    MapperId = 0
 	MapperMMC1             = 1
 	MapperUnROM            = 2
-	INESMapper003          = 3
+	MapperINES003          = 3
 	MapperMMC3             = 4
 	MapperMMC5             = 5
 )
@@ -19,6 +19,8 @@ func (i MapperId) String() string {
 		return "MMC1"
 	case MapperUnROM:
 		return "UnROM"
+	case MapperINES003:
+		return "MapperINES003"
 	case MapperMMC3:
 		return "MMC3"
 	case MapperMMC5:

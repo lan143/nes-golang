@@ -74,20 +74,22 @@ func (d *Display) runInternal() {
 }
 
 func (d *Display) RenderPixel(x, y int, color uint32) {
-	y = 239 - y
+	y = NesImageSizeY - 1 - y
+
+	d.resizeLock.Lock()
 
 	for i := 0; i < d.coeff; i++ {
 		for j := 0; j < d.coeff; j++ {
 			offset := ((y*d.coeff)+i)*4*(NesImageSizeX*d.coeff) + ((x*d.coeff)+j)*4
 
-			d.resizeLock.Lock()
 			d.pixelBuffer[offset] = uint8(color)
 			d.pixelBuffer[offset+1] = uint8(color >> 8)
 			d.pixelBuffer[offset+2] = uint8(color >> 16)
 			d.pixelBuffer[offset+3] = uint8(color >> 24)
-			d.resizeLock.Unlock()
 		}
 	}
+
+	d.resizeLock.Unlock()
 }
 
 func (d *Display) checkWindowResize() {
