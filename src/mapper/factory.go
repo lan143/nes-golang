@@ -2,14 +2,17 @@ package mapper
 
 import (
 	"fmt"
+	"main/src/bus"
 	"main/src/enum"
 	ines_mapper_3 "main/src/mapper/ines-mapper-3"
 	"main/src/mapper/mmc1"
+	"main/src/mapper/mmc3"
 	"main/src/mapper/nrom"
 	"main/src/mapper/unrom"
 )
 
 type Factory struct {
+	bus *bus.Bus
 }
 
 func (f *Factory) GetMapper(id enum.MapperId) (Mapper, error) {
@@ -22,11 +25,13 @@ func (f *Factory) GetMapper(id enum.MapperId) (Mapper, error) {
 		return &unrom.Mapper{}, nil
 	case enum.MapperINES003:
 		return &ines_mapper_3.Mapper{}, nil
+	case enum.MapperMMC3:
+		return mmc3.NewMapper(f.bus), nil
 	default:
 		return nil, fmt.Errorf("unsupported mapper (%d) %s", id, id.String())
 	}
 }
 
-func NewFactory() *Factory {
-	return &Factory{}
+func NewFactory(bus *bus.Bus) *Factory {
+	return &Factory{bus: bus}
 }

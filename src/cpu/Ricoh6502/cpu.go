@@ -17,6 +17,19 @@ const (
 	BRK                    = 0xFFFE
 )
 
+func (h InterruptHandler) String() string {
+	switch h {
+	case NMI:
+		return "NMI"
+	case Reset:
+		return "Reset"
+	case IRQ:
+		return "IRQ"
+	}
+
+	return "UNKNOWN"
+}
+
 type Cpu struct {
 	A    byte      // аккумулятор, 8 бит;
 	X, Y byte      // индексные регистры, 8 бит;
@@ -135,9 +148,7 @@ func (c *Cpu) getByte(address uint16) byte {
 	if address >= 0x2000 && address < 0x4000 {
 		address &= 0x2007
 
-		if address == 0x2002 || address == 0x2004 || address == 0x2007 {
-			return c.b.ReadByCPU(address)
-		}
+		return c.b.ReadByCPU(address)
 	}
 
 	if address >= 0x4000 && address < 0x4020 {

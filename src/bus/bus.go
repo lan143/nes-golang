@@ -28,12 +28,23 @@ type Bus struct {
 	readFromCPU    func(address uint16) byte
 	apuDMCActivate func()
 	cpuSkipCycles  func(cycles uint16)
+	ppuScanline    func()
 }
 
 func (b *Bus) Init() {
 	b.cpuWrites = make(map[uint16]func(value byte))
 	b.cpuReads = make(map[uint16]func() byte)
 	b.interrupts = make(map[Interrupt]func())
+}
+
+func (b *Bus) DrivePPUScanline() {
+	if b.ppuScanline != nil {
+		b.ppuScanline()
+	}
+}
+
+func (b *Bus) OnPPUScanline(fn func()) {
+	b.ppuScanline = fn
 }
 
 func (b *Bus) CPUSkipCycles(cycles uint16) {
