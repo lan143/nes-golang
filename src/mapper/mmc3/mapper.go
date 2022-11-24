@@ -90,16 +90,24 @@ func (m *Mapper) MapChrRom(address uint16) uint32 {
 			bank = m.characterRegisters[4]
 		} else if address >= 0x0C00 && address < 0x1000 {
 			bank = m.characterRegisters[5]
-		} else if address >= 0x1000 && address < 0x1800 {
-			bank = m.characterRegisters[0]
+		} else if address >= 0x1000 && address < 0x1400 {
+			bank = m.characterRegisters[0] & 0xFE
+		} else if address >= 0x1400 && address < 0x1800 {
+			bank = m.characterRegisters[0] | 0x01
+		} else if address >= 0x1800 && address < 0x1C00 {
+			bank = m.characterRegisters[1] & 0xFE
 		} else {
-			bank = m.characterRegisters[1]
+			bank = m.characterRegisters[1] | 0x01
 		}
 	} else {
-		if address < 0x0800 {
-			bank = m.characterRegisters[0]
-		} else if address >= 0x0800 && address < 0x1000 {
-			bank = m.characterRegisters[1]
+		if address < 0x0400 {
+			bank = m.characterRegisters[0] & 0xFE
+		} else if address >= 0x0400 && address < 0x0800 {
+			bank = m.characterRegisters[0] | 0x01
+		} else if address >= 0x0800 && address < 0x0C00 {
+			bank = m.characterRegisters[1] & 0xFE
+		} else if address >= 0x0C00 && address < 0x1000 {
+			bank = m.characterRegisters[1] | 0x01
 		} else if address >= 0x1000 && address < 0x1400 {
 			bank = m.characterRegisters[2]
 		} else if address >= 0x1400 && address < 0x1800 {

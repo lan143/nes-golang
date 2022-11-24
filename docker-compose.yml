@@ -1,0 +1,9 @@
+version: '3.7'
+
+services:
+  build:
+    platform: linux/amd64
+    image: golang:1.18.1-buster
+    working_dir: /application
+    volumes:
+      - .:/application

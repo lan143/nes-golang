@@ -6,6 +6,7 @@ import (
 	"main/src/audio"
 	"main/src/bus"
 	"main/src/cartridge"
+	"main/src/config"
 	"main/src/cpu"
 	"main/src/display"
 	"main/src/joypad"
@@ -16,6 +17,8 @@ import (
 )
 
 type Nes struct {
+	config *config.Config
+
 	romFactory     *rom.Factory
 	cpuFactory     *cpu.Factory
 	ppuFactory     *ppu.Factory
@@ -33,13 +36,17 @@ type Nes struct {
 	cartridge *cartridge.Cartridge
 }
 
-func (n *Nes) Init() error {
+func (n *Nes) Init(romName string) error {
+	err := n.config.Init()
+	if err != nil {
+		return err
+	}
+
 	n.bus.Init()
 
-	args := os.Args[1:]
-	f, err := os.Open(args[0])
+	f, err := os.Open(romName)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	r, err := n.romFactory.GetRom(f)
@@ -105,6 +112,7 @@ func (n *Nes) Run(ctx context.Context) {
 }
 
 func NewNes(
+	config *config.Config,
 	bus *bus.Bus,
 	romFactory *rom.Factory,
 	cpuFactory *cpu.Factory,
@@ -116,6 +124,7 @@ func NewNes(
 	cartridge *cartridge.Cartridge,
 ) *Nes {
 	return &Nes{
+		config:         config,
 		bus:            bus,
 		romFactory:     romFactory,
 		cpuFactory:     cpuFactory,
