@@ -10,6 +10,9 @@ import (
 	"main/src/ram"
 )
 
+const vRamSize uint16 = 16384
+const spritesSize uint16 = 256
+
 type PPU struct {
 	cartridge *cartridge.Cartridge
 	display   display.Display
@@ -20,19 +23,15 @@ type PPU struct {
 	scanline uint16
 	cycle    uint16
 
-	vRam    [16384]byte
-	oamRam  [256]byte
-	oamRam2 [32]byte
+	vRam [vRamSize]byte
 
 	ppuCtrl   registers.PPUCtrlRegister   // 0x2000
 	ppuMask   registers.PPUMaskRegister   // 0x2001
 	ppuStatus registers.PPUStatusRegister // 0x2002
 	oamAddr   byte                        // 0x2003
-	oamData   byte                        // 0x2004
 	ppuScroll byte                        // 0x2005
 	ppuAddr   byte                        // 0x2006
 	ppuData   byte                        // 0x2007
-	oamDma    byte                        // 0x4014
 
 	nameTableRegister          byte
 	attributeTableLowRegister  registers.Register[uint16]
@@ -53,9 +52,9 @@ type PPU struct {
 	vRamReadBuffer     byte
 	registerFirstStore bool
 
-	spritePixels     [256]uint32
-	spriteIds        [256]uint32
-	spritePriorities [256]uint32
+	spritePixels     [spritesSize]uint32
+	spriteIds        [spritesSize]uint32
+	spritePriorities [spritesSize]uint32
 
 	spritesManager  sprites.Manager
 	spritesManager2 sprites.Manager
@@ -80,15 +79,10 @@ func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuR
 	p.vRamReadBuffer = 0
 	p.registerFirstStore = true
 
-	var i uint16
-	for i = 0; i < 256; i++ {
-		p.spritePixels[i] = 0x80000000
-		p.spriteIds[i] = 0x80000000
-		p.spritePriorities[i] = 0x80000000
-	}
+	p.resetSpriteData()
 
-	p.spritesManager.Init(p.oamRam[:])
-	p.spritesManager2.Init(p.oamRam2[:])
+	p.spritesManager.Init(256)
+	p.spritesManager2.Init(32)
 
 	p.bus.OnCPUWrite(0x2000, func(value byte) {
 		p.ppuCtrl.SetValue(value)
@@ -103,8 +97,7 @@ func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuR
 		p.oamAddr = value
 	})
 	p.bus.OnCPUWrite(0x2004, func(value byte) {
-		p.oamData = value
-		p.oamRam[p.oamAddr] = value
+		p.spritesManager.SetByte(p.oamAddr, value)
 		p.oamAddr++
 	})
 	p.bus.OnCPUWrite(0x2005, func(value byte) {
@@ -151,12 +144,11 @@ func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuR
 		p.ppuAddr = byte(p.currentVRamAddress.Get()) & 0xFF
 	})
 	p.bus.OnCPUWrite(0x4014, func(value byte) {
-		p.oamDma = value
-		offset := uint16(p.oamDma) * 0x100
-		var i uint16
+		offset := uint16(value) * 0x100
 
-		for i = uint16(p.oamAddr); i < 256; i++ {
-			p.oamRam[i] = p.cpuRam.GetByte(offset + i)
+		var i uint16
+		for i = 0; i < 256; i++ {
+			p.spritesManager.SetByte(byte(i), p.cpuRam.GetByte(offset+i))
 		}
 	})
 	p.bus.OnCPURead(0x2002, func() byte {
@@ -167,7 +159,7 @@ func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuR
 		return value
 	})
 	p.bus.OnCPURead(0x2004, func() byte {
-		return p.oamRam[p.oamAddr]
+		return p.spritesManager.GetByte(p.oamAddr)
 	})
 	p.bus.OnCPURead(0x2007, func() byte {
 		var value byte
@@ -319,16 +311,10 @@ func (p *PPU) evaluateSprites() {
 
 	if p.cycle == 0 {
 		p.processSpritePixels()
-
-		var i int
-		il := len(p.oamRam2)
-
-		for i = 0; i < il; i++ {
-			p.oamRam2[i] = 0xFF
-		}
+		p.spritesManager2.Reset()
 	} else if p.cycle == 65 {
 		var height byte
-		var n = 0
+		var n byte
 
 		if p.ppuCtrl.IsSpritesSize() {
 			height = 16
@@ -336,7 +322,7 @@ func (p *PPU) evaluateSprites() {
 			height = 8
 		}
 
-		var i int
+		var i byte
 		il := p.spritesManager.GetCount()
 
 		for i = 0; i < il; i++ {
@@ -355,16 +341,18 @@ func (p *PPU) evaluateSprites() {
 	}
 }
 
-func (p *PPU) processSpritePixels() {
-	ay := int16(p.scanline) - 1
-	var i int
-	il := len(p.spritePixels)
-
-	for i = 0; i < il; i++ {
+func (p *PPU) resetSpriteData() {
+	var i uint16
+	for i = 0; i < spritesSize; i++ {
 		p.spritePixels[i] = 0x80000000
 		p.spriteIds[i] = 0x80000000
 		p.spritePriorities[i] = 0x80000000
 	}
+}
+
+func (p *PPU) processSpritePixels() {
+	p.resetSpriteData()
+	ay := int16(p.scanline) - 1
 
 	var height int16
 	if p.ppuCtrl.IsSpritesSize() {
@@ -373,8 +361,9 @@ func (p *PPU) processSpritePixels() {
 		height = 8
 	}
 
-	il = p.spritesManager2.GetCount()
+	il := p.spritesManager2.GetCount()
 
+	var i byte
 	for i = 0; i < il; i++ {
 		var s = p.spritesManager2.GetSprite(i)
 
@@ -572,7 +561,7 @@ func (p *PPU) shiftRegisters() {
 }
 
 func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
-	address = address & 0x2FFF // just in case
+	address = address & 0x2FFF
 
 	var baseAddress uint16
 
@@ -697,7 +686,7 @@ func (p *PPU) getByte(address uint16) byte {
 		address = 0x3F00
 	}
 
-	if address < uint16(len(p.vRam)) {
+	if address < vRamSize {
 		return p.vRam[address]
 	}
 
@@ -783,7 +772,7 @@ func (p *PPU) renderPixel() {
 		p.ppuStatus.SetSpriteZeroHit()
 	}
 
-	p.display.RenderPixel(int(x), int(y), c)
+	p.display.RenderPixel(x, y, c)
 }
 
 func NewPPU(b *bus.Bus) *PPU {

@@ -7,7 +7,8 @@ import (
 )
 
 type Config struct {
-	JoyPad1 JoyPadConfig `mapstructure:"joypad1"`
+	PprofEnabled bool         `mapstructure:"pprof_enabled"`
+	JoyPad1      JoyPadConfig `mapstructure:"joypad1"`
 }
 
 func (c *Config) Init() error {
@@ -37,6 +38,7 @@ func (c *Config) Init() error {
 func (c *Config) initDefaults() {
 	log.Println("Create config with default settings...")
 
+	viper.SetDefault("pprof_enabled", false)
 	viper.SetDefault("joypad1", JoyPadConfig{
 		A:      "Z",
 		B:      "X",

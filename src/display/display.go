@@ -4,5 +4,5 @@ type Display interface {
 	Init()
 	Run()
 	UpdateScreen()
-	RenderPixel(x, y int, color uint32)
+	RenderPixel(x, y uint16, color uint32)
 }

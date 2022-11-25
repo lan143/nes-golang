@@ -1,16 +1,16 @@
 package sprites
 
 type Sprite struct {
-	id    uint16
-	index uint16
+	id    byte
+	index byte
 	data  []byte
 }
 
-func (s *Sprite) GetId() uint16 {
+func (s *Sprite) GetId() byte {
 	return s.id
 }
 
-func (s *Sprite) GetIndex() uint16 {
+func (s *Sprite) GetIndex() byte {
 	return s.index
 }
 
@@ -70,7 +70,7 @@ func (s *Sprite) On(y uint16, length byte) bool {
 	return (y >= uint16(s.GetYPosition())) && (y < uint16(s.GetYPosition()+length))
 }
 
-func NewSprite(id, index uint16, data []byte) Sprite {
+func NewSprite(id, index byte, data []byte) Sprite {
 	return Sprite{
 		id:    id,
 		index: index,

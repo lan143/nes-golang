@@ -14,6 +14,7 @@ import (
 	"main/src/ram"
 	"main/src/rom"
 	"os"
+	"runtime/pprof"
 )
 
 type Nes struct {
@@ -40,6 +41,18 @@ func (n *Nes) Init(romName string) error {
 	err := n.config.Init()
 	if err != nil {
 		return err
+	}
+
+	if n.config.PprofEnabled {
+		cpuProfile, err := os.Create("cpuprofile")
+		if err != nil {
+			return err
+		}
+
+		err = pprof.StartCPUProfile(cpuProfile)
+		if err != nil {
+			return err
+		}
 	}
 
 	n.bus.Init()
@@ -109,6 +122,10 @@ func (n *Nes) Run(ctx context.Context) {
 	}()
 
 	n.display.Run()
+
+	if n.config.PprofEnabled {
+		pprof.StopCPUProfile()
+	}
 }
 
 func NewNes(

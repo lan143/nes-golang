@@ -4,7 +4,7 @@ import (
 	"unsafe"
 )
 
-type Register[T byte | uint16] struct {
+type Register[T byte | uint16 | uint32] struct {
 	value T
 }
 
