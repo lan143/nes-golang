@@ -25,13 +25,14 @@ type PPU struct {
 
 	vRam [vRamSize]byte
 
-	ppuCtrl   registers.PPUCtrlRegister   // 0x2000
-	ppuMask   registers.PPUMaskRegister   // 0x2001
-	ppuStatus registers.PPUStatusRegister // 0x2002
-	oamAddr   byte                        // 0x2003
-	ppuScroll byte                        // 0x2005
-	ppuAddr   byte                        // 0x2006
-	ppuData   byte                        // 0x2007
+	ppuCtrl     registers.PPUCtrlRegister   // 0x2000
+	ppuMask     registers.PPUMaskRegister   // 0x2001
+	ppuStatus   registers.PPUStatusRegister // 0x2002
+	oamAddr     byte                        // 0x2003
+	ppuScroll   byte                        // 0x2005
+	ppuAddr     byte                        // 0x2006
+	ppuData     byte                        // 0x2007
+	openBusByte byte                        // for open bus behavior
 
 	nameTableRegister          byte
 	attributeTableLowRegister  registers.Register[uint16]
@@ -56,8 +57,8 @@ type PPU struct {
 	spriteIds        [spritesSize]uint32
 	spritePriorities [spritesSize]uint32
 
-	spritesManager  sprites.Manager
-	spritesManager2 sprites.Manager
+	firstOAM  sprites.Manager
+	secondOAM sprites.Manager
 
 	cpuRam *ram.Ram
 }
@@ -81,27 +82,35 @@ func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuR
 
 	p.resetSpriteData()
 
-	p.spritesManager.Init(256)
-	p.spritesManager2.Init(32)
+	p.firstOAM.Init(256)
+	p.secondOAM.Init(32)
 
 	p.bus.OnCPUWrite(0x2000, func(value byte) {
 		p.ppuCtrl.SetValue(value)
+		p.openBusByte = value
 
 		p.temporalVRamAddress &= ^uint16(0xC00)
 		p.temporalVRamAddress |= (uint16(p.ppuCtrl.GetValue()) & 0x3) << 10
 	})
 	p.bus.OnCPUWrite(0x2001, func(value byte) {
 		p.ppuMask.SetValue(value)
+		p.openBusByte = value
+	})
+	p.bus.OnCPUWrite(0x2002, func(value byte) {
+		p.openBusByte = value
 	})
 	p.bus.OnCPUWrite(0x2003, func(value byte) {
 		p.oamAddr = value
+		p.openBusByte = value
 	})
 	p.bus.OnCPUWrite(0x2004, func(value byte) {
-		p.spritesManager.SetByte(p.oamAddr, value)
+		p.firstOAM.SetByte(p.oamAddr, value)
 		p.oamAddr++
+		p.openBusByte = value
 	})
 	p.bus.OnCPUWrite(0x2005, func(value byte) {
 		p.ppuScroll = value
+		p.openBusByte = value
 
 		if p.registerFirstStore {
 			p.fineXScroll = uint16(p.ppuScroll) & 0x7
@@ -116,6 +125,8 @@ func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuR
 		p.registerFirstStore = !p.registerFirstStore
 	})
 	p.bus.OnCPUWrite(0x2006, func(value byte) {
+		p.openBusByte = value
+
 		if p.registerFirstStore {
 			p.temporalVRamAddress &= ^uint16(0x7F00)
 			p.temporalVRamAddress |= (uint16(value) & 0x3F) << 8
@@ -130,6 +141,7 @@ func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuR
 	})
 	p.bus.OnCPUWrite(0x2007, func(value byte) {
 		p.ppuData = value
+		p.openBusByte = value
 		p.setByte(p.currentVRamAddress.Get(), p.ppuData)
 
 		var incAddr uint16
@@ -148,18 +160,35 @@ func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuR
 
 		var i uint16
 		for i = 0; i < 256; i++ {
-			p.spritesManager.SetByte(byte(i), p.cpuRam.GetByte(offset+i))
+			p.firstOAM.SetByte(byte(i), p.cpuRam.GetByte(offset+i))
 		}
 	})
+
+	p.bus.OnCPURead(0x2000, func() byte {
+		return p.openBusByte
+	})
+	p.bus.OnCPURead(0x2001, func() byte {
+		return p.openBusByte
+	})
 	p.bus.OnCPURead(0x2002, func() byte {
-		value := p.ppuStatus.GetValue()
+		value := p.ppuStatus.GetValue() | (p.openBusByte & 0x1F)
+
 		p.ppuStatus.ClearVBlank()
 		p.registerFirstStore = true
 
 		return value
 	})
+	p.bus.OnCPURead(0x2003, func() byte {
+		return p.openBusByte
+	})
 	p.bus.OnCPURead(0x2004, func() byte {
-		return p.spritesManager.GetByte(p.oamAddr)
+		return p.firstOAM.GetByte(p.oamAddr)
+	})
+	p.bus.OnCPURead(0x2005, func() byte {
+		return p.openBusByte
+	})
+	p.bus.OnCPURead(0x2006, func() byte {
+		return p.openBusByte
 	})
 	p.bus.OnCPURead(0x2007, func() byte {
 		var value byte
@@ -311,7 +340,7 @@ func (p *PPU) evaluateSprites() {
 
 	if p.cycle == 0 {
 		p.processSpritePixels()
-		p.spritesManager2.Reset()
+		p.secondOAM.Reset()
 	} else if p.cycle == 65 {
 		var height byte
 		var n byte
@@ -323,14 +352,14 @@ func (p *PPU) evaluateSprites() {
 		}
 
 		var i byte
-		il := p.spritesManager.GetCount()
+		il := p.firstOAM.GetCount()
 
 		for i = 0; i < il; i++ {
-			s := p.spritesManager.GetSprite(i)
+			s := p.firstOAM.GetSprite(i)
 
 			if s.On(p.scanline, height) {
 				if n < 8 {
-					p.spritesManager2.Copy(n, s)
+					p.secondOAM.Copy(n, s)
 					n++
 				} else {
 					p.ppuStatus.SetSpriteOverflow()
@@ -361,11 +390,11 @@ func (p *PPU) processSpritePixels() {
 		height = 8
 	}
 
-	il := p.spritesManager2.GetCount()
+	il := p.secondOAM.GetCount()
 
 	var i byte
 	for i = 0; i < il; i++ {
-		var s = p.spritesManager2.GetSprite(i)
+		var s = p.secondOAM.GetSprite(i)
 
 		if s.IsEmpty() {
 			break
