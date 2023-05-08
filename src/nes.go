@@ -2,6 +2,7 @@ package src
 
 import (
 	"context"
+	"fmt"
 	"main/src/apu"
 	"main/src/audio"
 	"main/src/bus"
@@ -11,13 +12,20 @@ import (
 	"main/src/display"
 	"main/src/joypad"
 	"main/src/ppu"
+	"main/src/ppu/enum"
 	"main/src/ram"
 	"main/src/rom"
 	"os"
+	"os/signal"
 	"runtime/pprof"
+	"sync"
+	"syscall"
 )
 
 type Nes struct {
+	sigs chan os.Signal
+	wg   sync.WaitGroup
+
 	config *config.Config
 
 	romFactory     *rom.Factory
@@ -29,15 +37,19 @@ type Nes struct {
 
 	bus *bus.Bus
 
-	cpu       cpu.CPU
-	ppu       ppu.PPU
-	display   display.Display
-	apu       apu.APU
-	joypad    *joypad.JoyPad
-	cartridge *cartridge.Cartridge
+	cpu         cpu.CPU
+	ppu         ppu.PPU
+	display     display.Display
+	apu         apu.APU
+	joypad      *joypad.JoyPad
+	cartridge   *cartridge.Cartridge
+	videoSystem enum.VideoSystem
 }
 
 func (n *Nes) Init(romName string) error {
+	n.sigs = make(chan os.Signal, 1)
+	signal.Notify(n.sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
 	err := n.config.Init()
 	if err != nil {
 		return err
@@ -53,6 +65,29 @@ func (n *Nes) Init(romName string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	switch n.config.VideoSystem {
+	case "pal":
+		fallthrough
+	case "PAL":
+		fallthrough
+	case "Pal":
+		n.videoSystem = enum.VideoSystemPAL
+	case "ntsc":
+		fallthrough
+	case "NTSC":
+		fallthrough
+	case "Ntsc":
+		n.videoSystem = enum.VideoSystemNTSC
+	case "dendy":
+		fallthrough
+	case "DENDY":
+		fallthrough
+	case "Dendy":
+		n.videoSystem = enum.VideoSystemDendy
+	default:
+		return fmt.Errorf("unsupported video system %s", n.videoSystem)
 	}
 
 	n.bus.Init()
@@ -99,32 +134,86 @@ func (n *Nes) Init(romName string) error {
 }
 
 func (n *Nes) Run(ctx context.Context) {
-	// @todo: use wait group, run all in goroutines, process signals from OS...
-
-	go func() {
-		for {
-			//oldTime := time.Now()
-
-			n.cpu.Run()
-
-			// 1 CPU cycle = 3 PPU cycles
-			for i := 0; i < 3; i++ {
-				n.ppu.Run()
-			}
-
-			n.apu.Run()
-
-			/*for time.Since(oldTime) < 500*time.Nanosecond {
-			}*/
-
-			// 0,000000558730074
-		}
-	}()
-
-	n.display.Run()
+	cancelCtx, cancelFunc := context.WithCancel(ctx)
+	go n.processSignals(cancelFunc)
 
 	if n.config.PprofEnabled {
-		pprof.StopCPUProfile()
+		go n.runProfiler(cancelCtx, &n.wg)
+	}
+
+	go n.runInternal(cancelCtx, &n.wg)
+
+	n.display.Run(cancelCtx)
+	n.wg.Wait()
+}
+
+func (n *Nes) runInternal(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
+
+	var counter uint32
+
+	cpuRunCycleChan := make(chan bool, 1)
+	ppuRunCycleChan := make(chan bool, 1)
+
+	go n.runCPU(cpuRunCycleChan)
+	go n.runPPU(ppuRunCycleChan)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			counter++
+		}
+
+		if n.videoSystem == enum.VideoSystemNTSC {
+			if counter%4 != 0 {
+				ppuRunCycleChan <- true
+			} else {
+				cpuRunCycleChan <- true
+			}
+		} else {
+			if counter%4 != 0 {
+				ppuRunCycleChan <- true
+			} else {
+				cpuRunCycleChan <- true
+			}
+
+			if counter%16 == 0 {
+				cpuRunCycleChan <- true
+			}
+		}
+	}
+}
+
+func (n *Nes) runCPU(cpuRunCycleChan chan bool) {
+	for {
+		<-cpuRunCycleChan
+		n.cpu.RunCycle()
+		n.apu.RunCycle()
+	}
+}
+
+func (n *Nes) runPPU(ppuRunCycleChan chan bool) {
+	for {
+		<-ppuRunCycleChan
+		n.ppu.RunCycle()
+	}
+}
+
+func (n *Nes) runProfiler(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	<-ctx.Done()
+	pprof.StopCPUProfile()
+	wg.Done()
+}
+
+func (n *Nes) processSignals(cancelFunc context.CancelFunc) {
+	select {
+	case <-n.sigs:
+		cancelFunc()
+		break
 	}
 }
 

@@ -75,6 +75,11 @@ func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuR
 	p.patternTableLowLatch = 0
 	p.patternTableHighLatch = 0
 	p.fineXScroll = 0
+	p.attributeTableLowRegister.Init()
+	p.attributeTableHighRegister.Init()
+	p.patternTableLowRegister.Init()
+	p.patternTableHighRegister.Init()
+	p.currentVRamAddress.Init()
 	p.currentVRamAddress.Set(0)
 	p.temporalVRamAddress = 0
 	p.vRamReadBuffer = 0
@@ -217,11 +222,7 @@ func (p *PPU) Init(cartridge *cartridge.Cartridge, display display.Display, cpuR
 	p.ppuStatus.SetVBlank()
 }
 
-func (p *PPU) Run() {
-	p.runCycle()
-}
-
-func (p *PPU) runCycle() {
+func (p *PPU) RunCycle() {
 	p.renderPixel()
 	p.shiftRegisters()
 	p.fetch()
@@ -265,7 +266,7 @@ func (p *PPU) countUpScrollCounters() {
 		return
 	}
 
-	if (p.cycle % 8) == 0 {
+	if (p.cycle & 0x7) == 0 {
 		var v = p.currentVRamAddress.Get()
 
 		if (v & 0x1F) == 31 {
@@ -312,7 +313,6 @@ func (p *PPU) updateFlags() {
 	if p.cycle == 1 {
 		if p.scanline == 241 {
 			p.ppuStatus.SetVBlank()
-			p.display.UpdateScreen()
 		} else if p.scanline == 261 {
 			p.ppuStatus.ClearVBlank()
 			p.ppuStatus.ClearSpriteZeroHit()
@@ -453,8 +453,8 @@ func (p *PPU) processSpritePixels() {
 }
 
 func (p *PPU) getPatternTableElement(index, x, y, ySize uint16) byte {
-	ax := x % 8
-	ay := y % 8
+	ax := x & 0x7
+	ay := y & 0x7
 	var a, b byte
 	var offset uint16
 
@@ -481,32 +481,22 @@ func (p *PPU) fetch() {
 		return
 	}
 
-	if p.cycle == 0 {
+	if p.cycle == 0 || (p.cycle >= 257 && p.cycle <= 320) || p.cycle >= 337 {
 		return
 	}
 
-	if (p.cycle >= 257 && p.cycle <= 320) || p.cycle >= 337 {
-		return
-	}
-
-	switch (p.cycle - 1) % 8 {
+	switch (p.cycle - 1) & 0x7 {
 	case 0:
 		p.fetchNameTable()
-		break
 	case 2:
 		p.fetchAttributeTable()
-		break
 	case 4:
 		p.fetchPatternTableLow()
-		break
 	case 6:
 		p.fetchPatternTableHigh()
-		break
-	default:
-		break
 	}
 
-	if p.cycle%8 == 1 {
+	if p.cycle&0x7 == 1 {
 		p.nameTableRegister = p.nameTableLatch
 		p.attributeTableLowRegister.SetLowerByte(p.attributeTableLowLatch)
 		p.attributeTableHighRegister.SetLowerByte(p.attributeTableHighLatch)
@@ -529,13 +519,13 @@ func (p *PPU) fetchAttributeTable() {
 	coarseY := (v >> 5) & 0x1F
 
 	var topBottom, rightLeft byte
-	if (coarseY % 4) >= 2 { // bottom, top
+	if (coarseY & 0x3) >= 2 { // bottom, top
 		topBottom = 1
 	} else {
 		topBottom = 0
 	}
 
-	if (coarseX % 4) >= 2 { // right, left
+	if (coarseX & 0x3) >= 2 { // right, left
 		rightLeft = 1
 	} else {
 		rightLeft = 0
@@ -597,7 +587,6 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 	switch p.cartridge.GetMirroringType() {
 	case enum.SingleScreen:
 		baseAddress = 0x2000
-		break
 	case enum.Horizontal:
 		if address >= 0x2000 && address < 0x2400 {
 			baseAddress = 0x2000
@@ -608,7 +597,6 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 		} else {
 			baseAddress = 0x2400
 		}
-		break
 	case enum.Vertical:
 		if address >= 0x2000 && address < 0x2400 {
 			baseAddress = 0x2000
@@ -619,7 +607,6 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 		} else {
 			baseAddress = 0x2400
 		}
-		break
 	case enum.FourScreen:
 		if address >= 0x2000 && address < 0x2400 {
 			baseAddress = 0x2000
@@ -630,7 +617,6 @@ func (p *PPU) getNameTableAddressWithMirroring(address uint16) uint16 {
 		} else {
 			baseAddress = 0x2C00
 		}
-		break
 	}
 
 	return baseAddress | (address & 0x3FF)
@@ -665,7 +651,6 @@ func (p *PPU) setByte(address uint16, value byte) {
 	// Addresses for palette
 	// 0x3F10/0x3F14/0x3F18/0x3F1C are mirrors of
 	// 0x3F00/0x3F04/0x3F08/0x3F0C.
-
 	if address == 0x3F10 {
 		address = 0x3F00
 	}
@@ -704,15 +689,18 @@ func (p *PPU) getByte(address uint16) byte {
 		return p.vRam[p.getNameTableAddressWithMirroring(address&0x2FFF)]
 	}
 
+	// Addresses for palette
+	// Addresses $3F04/$3F08/$3F0C can contain unique data, though these values are not used by the PPU when normally
+	// rendering (since the pattern values that would otherwise select those cells select the backdrop color instead).
+	// Addresses $3F10/$3F14/$3F18/$3F1C are mirrors of $3F00/$3F04/$3F08/$3F0C. Note that this goes for writing as
+	// well as reading. A symptom of not having implemented this correctly in an emulator is the sky being black in
+	// Super Mario Bros., which writes the backdrop color through $3F10.
 	if address >= 0x3F00 && address < 0x4000 {
 		address = address & 0x3F1F
-	}
 
-	// Addresses for palette
-	// 0x3F10/0x3F14/0x3F18/0x3F1C are mirrors of
-	// 0x3F00/0x3F04/0x3F08/0x3F0C.
-	if address == 0x3F04 || address == 0x3F08 || address == 0x3F0C || address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C {
-		address = 0x3F00
+		if address&0x3 == 0 {
+			address = 0x3F00
+		}
 	}
 
 	if address < vRamSize {

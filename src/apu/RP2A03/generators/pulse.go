@@ -141,15 +141,15 @@ func (g *Pulse) GetRemainingBytes() uint16 { return 0 }
 func (g *Pulse) GetLengthCounter() byte { return g.lengthCounter }
 
 func (g *Pulse) getTimer() uint16 {
-	return (uint16((g.registers[3])&((1<<3)-1)) << 8) | uint16(g.registers[2])
+	return (uint16((g.registers[3])&0x7) << 8) | uint16(g.registers[2])
 }
 
 func (g *Pulse) getLengthCounterIndex() byte {
-	return (g.registers[3] >> 3) & ((1 << 5) - 1)
+	return (g.registers[3] >> 3) & 0x1F
 }
 
 func (g *Pulse) getDuty() byte {
-	return (g.registers[0] >> 6) & ((1 << 2) - 1)
+	return (g.registers[0] >> 6) & 0x3
 }
 
 func (g *Pulse) isEnabledSweep() bool {
@@ -157,7 +157,7 @@ func (g *Pulse) isEnabledSweep() bool {
 }
 
 func (g *Pulse) getSweepPeriod() byte {
-	return g.registers[1] >> 4 & ((1 << 3) - 1)
+	return g.registers[1] >> 4 & 0x7
 }
 
 func (g *Pulse) isNegatedSweep() bool {
@@ -165,7 +165,7 @@ func (g *Pulse) isNegatedSweep() bool {
 }
 
 func (g *Pulse) getSweepShiftAmount() byte {
-	return g.registers[1] & ((1 << 3) - 1)
+	return g.registers[1] & 0x7
 }
 
 func (g *Pulse) isEnabledEnvelopeLoop() bool {
@@ -177,5 +177,5 @@ func (g *Pulse) isDisabledEnvelope() bool {
 }
 
 func (g *Pulse) getEnvelopePeriod() byte {
-	return g.registers[0] & ((1 << 4) - 1)
+	return g.registers[0] & 0xF
 }

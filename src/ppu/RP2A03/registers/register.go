@@ -6,6 +6,11 @@ import (
 
 type Register[T byte | uint16 | uint32] struct {
 	value T
+	width byte
+}
+
+func (r *Register[T]) Init() {
+	r.width = byte(unsafe.Sizeof(r.value) * 8)
 }
 
 func (r *Register[T]) Get() T {
@@ -18,13 +23,9 @@ func (r *Register[T]) Set(value T) {
 
 func (r *Register[T]) SetLowerByte(value byte) {
 	var andVal T
-	andVal = ((1 << r.GetWidth()) - 1) << 8
+	andVal = ((1 << r.width) - 1) << 8
 	upperBytes := r.value & andVal
 	r.value = upperBytes | T(value)
-}
-
-func (r *Register[T]) GetWidth() byte {
-	return byte(unsafe.Sizeof(r.value) * 8)
 }
 
 func (r *Register[T]) LoadBit(pos byte) T {
@@ -33,7 +34,7 @@ func (r *Register[T]) LoadBit(pos byte) T {
 
 func (r *Register[T]) Shift(value T) T {
 	value &= 0x1
-	carry := r.LoadBit(r.GetWidth() - 1)
+	carry := r.LoadBit(r.width - 1)
 	r.value = (r.value << 1) | value
 
 	return carry

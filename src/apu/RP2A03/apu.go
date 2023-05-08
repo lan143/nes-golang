@@ -20,6 +20,7 @@ type APU struct {
 	cycle        uint32
 	step         byte
 	samplePeriod uint32
+	sampleRate   uint32
 
 	frameIrqActive bool
 	dmcIrqActive   bool
@@ -59,6 +60,7 @@ func (a *APU) Init(sampleRate uint32, audio audio.Audio) {
 
 	a.status.SetValue(0x00)
 
+	a.sampleRate = sampleRate
 	a.samplePeriod = 1789773 / sampleRate
 
 	a.b.OnCPUWrite(0x4000, func(value byte) {
@@ -187,11 +189,7 @@ func (a *APU) Init(sampleRate uint32, audio audio.Audio) {
 	})
 }
 
-func (a *APU) Run() {
-	a.runCycle()
-}
-
-func (a *APU) runCycle() {
+func (a *APU) RunCycle() {
 	a.cycle++
 
 	if a.cycle%a.samplePeriod == 0 {

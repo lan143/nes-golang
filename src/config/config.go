@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	PprofEnabled bool         `mapstructure:"pprof_enabled"`
+	VideoSystem  string       `mapstructure:"video_system"`
 	JoyPad1      JoyPadConfig `mapstructure:"joypad1"`
 }
 
@@ -39,6 +40,7 @@ func (c *Config) initDefaults() {
 	log.Println("Create config with default settings...")
 
 	viper.SetDefault("pprof_enabled", false)
+	viper.SetDefault("video_system", "ntsc")
 	viper.SetDefault("joypad1", JoyPadConfig{
 		A:      "Z",
 		B:      "X",

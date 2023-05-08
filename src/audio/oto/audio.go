@@ -6,29 +6,19 @@ import (
 )
 
 const (
-	AudioBufferSize int = 4096
+	AudioBufferSize int = 8192
 )
 
 type Audio struct {
 	otoCtx *oto.Context
 	player *oto.Player
 
-	buffer      [AudioBufferSize]byte
-	bufferIndex int
-
-	playChan chan []byte
+	playChan chan byte
 }
 
 func (a *Audio) Init() error {
-	var err error
-	a.otoCtx, err = oto.NewContext(int(a.GetSampleRate()), 1, 1, AudioBufferSize)
-	if err != nil {
-		return err
-	}
+	a.playChan = make(chan byte, AudioBufferSize)
 
-	a.player = a.otoCtx.NewPlayer()
-
-	a.playChan = make(chan []byte)
 	go a.playInDevice()
 
 	return nil
@@ -39,27 +29,23 @@ func (a *Audio) GetSampleRate() uint32 {
 }
 
 func (a *Audio) PlaySample(sample float32) {
-	if a.bufferIndex < AudioBufferSize {
-		a.buffer[a.bufferIndex] = byte(sample * ((1 << 7) - 1))
-		a.bufferIndex++
-	} else {
-		a.bufferIndex = 0
-
-		playArray := make([]byte, len(a.buffer), len(a.buffer))
-
-		for i, val := range a.buffer {
-			playArray[i] = val
-		}
-
-		a.playChan <- playArray
+	if len(a.playChan) < AudioBufferSize {
+		a.playChan <- byte(sample * ((1 << 7) - 1))
 	}
 }
 
 func (a *Audio) playInDevice() {
-	for {
-		data := <-a.playChan
+	var err error
+	a.otoCtx, err = oto.NewContext(int(a.GetSampleRate()), 1, 1, AudioBufferSize)
+	if err != nil {
+		log.Printf("OTO init context err: %s", err.Error())
+		return
+	}
 
-		_, err := a.player.Write(data)
+	a.player = a.otoCtx.NewPlayer()
+
+	for {
+		_, err := a.player.Write([]byte{<-a.playChan})
 		if err != nil {
 			log.Printf("playInDevice error: %s", err.Error())
 		}

@@ -1,20 +1,15 @@
 package RP2A03
 
 type Palette struct {
-	value []uint32
-	size  byte
+	value [64]uint32
 }
 
 func (p *Palette) GetValue(index byte) uint32 {
-	if index < p.size {
-		return p.value[index]
-	}
-
-	return p.value[0]
+	return p.value[index]
 }
 
 func (p *Palette) Init() {
-	p.value = []uint32{
+	p.value = [64]uint32{
 		/* 0x00 */ 0xff757575,
 		/* 0x01 */ 0xff8f1b27,
 		/* 0x02 */ 0xffab0000,
@@ -80,5 +75,4 @@ func (p *Palette) Init() {
 		/* 0x3e */ 0xff000000,
 		/* 0x3f */ 0xff000000,
 	}
-	p.size = byte(len(p.value))
 }

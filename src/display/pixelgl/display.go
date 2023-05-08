@@ -1,6 +1,7 @@
 package pixelgl
 
 import (
+	"context"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"image/color"
@@ -17,9 +18,8 @@ const (
 type Display struct {
 	config *config.Config
 
-	win            *pixelgl.Window
-	canvas         *pixelgl.Canvas
-	updateScreenCh chan any
+	win    *pixelgl.Window
+	canvas *pixelgl.Canvas
 
 	bus *bus.Bus
 
@@ -31,6 +31,8 @@ type Display struct {
 	currentWinSizeY float64
 
 	buttonsJoyPad1 map[bus.JoyPadButton]pixelgl.Button
+
+	ctx context.Context
 }
 
 func (d *Display) Init() {
@@ -39,17 +41,18 @@ func (d *Display) Init() {
 	d.currentWinSizeY = NesImageSizeY
 	d.resizeBuffer = make([]uint8, (d.coeff*NesImageSizeX)*(d.coeff*NesImageSizeY)*4)
 	d.pixelBuffer = make([]uint32, NesImageSizeX*NesImageSizeY)
-	d.updateScreenCh = make(chan any)
 
 	d.initInput()
 }
 
-func (d *Display) Run() {
+func (d *Display) Run(ctx context.Context) {
+	d.ctx = ctx
 	pixelgl.Run(d.runInternal)
 }
 
-func (d *Display) UpdateScreen() {
-	d.updateScreenCh <- struct{}{}
+func (d *Display) RenderPixel(x, y uint16, color uint32) {
+	y = NesImageSizeY - 1 - y
+	d.pixelBuffer[y*NesImageSizeX+x] = color
 }
 
 func (d *Display) runInternal() {
@@ -69,13 +72,19 @@ func (d *Display) runInternal() {
 	d.canvas = d.win.Canvas()
 
 	for !d.win.Closed() {
-		<-d.updateScreenCh
+		select {
+		case <-d.ctx.Done():
+			return
+		default:
+		}
+
 		d.checkButtons()
 		d.checkWindowResize()
 		d.resizeFrame()
 
 		d.canvas.SetPixels(d.resizeBuffer)
 		d.canvas.Draw(d.win, pixel.IM.Moved(d.win.Bounds().Center()))
+
 		d.win.Update()
 	}
 }
@@ -85,8 +94,6 @@ func (d *Display) resizeFrame() {
 	var offset int
 
 	d.resizeLock.Lock()
-	defer d.resizeLock.Unlock()
-
 	for y := 0; y < NesImageSizeY; y++ {
 		for x := 0; x < NesImageSizeX; x++ {
 			c = d.pixelBuffer[y*NesImageSizeX+x]
@@ -103,11 +110,7 @@ func (d *Display) resizeFrame() {
 			}
 		}
 	}
-}
-
-func (d *Display) RenderPixel(x, y uint16, color uint32) {
-	y = NesImageSizeY - 1 - y
-	d.pixelBuffer[y*NesImageSizeX+x] = color
+	d.resizeLock.Unlock()
 }
 
 func (d *Display) checkWindowResize() {

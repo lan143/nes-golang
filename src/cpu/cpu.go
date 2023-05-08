@@ -8,5 +8,5 @@ import (
 type CPU interface {
 	Init(cartridge *cartridge.Cartridge, ram *ram.Ram)
 	Reset()
-	Run()
+	RunCycle()
 }

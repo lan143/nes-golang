@@ -13,18 +13,10 @@ type Cartridge struct {
 	mapper mapper.Mapper
 
 	mapperFactory *mapper.Factory
-}
 
-func (c *Cartridge) HasChrRom() bool {
-	return c.rom.GetChrRomSize() > 0
-}
-
-func (c *Cartridge) GetMirroringType() enum.MirroringType {
-	if c.mapper.GetMirroringType() != 0 {
-		return c.mapper.GetMirroringType()
-	} else {
-		return c.rom.GetMirroringType()
-	}
+	chrRomOffset     uint32
+	romMirroringType enum.MirroringType
+	hasChrRom        bool
 }
 
 func (c *Cartridge) LoadRom(r rom.Rom) error {
@@ -34,6 +26,10 @@ func (c *Cartridge) LoadRom(r rom.Rom) error {
 	log.Printf("Mapper: %s", enum.MapperId(c.rom.GetMapperId()))
 	log.Printf("PRG ROM Size: %d", c.rom.GetPrgRomSize())
 	log.Printf("CHR ROM Size: %d", c.rom.GetChrRomSize())
+
+	c.chrRomOffset = uint32(c.rom.GetPrgRomSize()) * 0x4000
+	c.romMirroringType = c.rom.GetMirroringType()
+	c.hasChrRom = c.rom.GetChrRomSize() > 0
 
 	c.mapper, err = c.mapperFactory.GetMapper(enum.MapperId(c.rom.GetMapperId()))
 	if err != nil {
@@ -48,9 +44,21 @@ func (c *Cartridge) LoadRom(r rom.Rom) error {
 	return nil
 }
 
+func (c *Cartridge) HasChrRom() bool {
+	return c.hasChrRom
+}
+
+func (c *Cartridge) GetMirroringType() enum.MirroringType {
+	if c.mapper.GetMirroringType() != 0 {
+		return c.mapper.GetMirroringType()
+	} else {
+		return c.romMirroringType
+	}
+}
+
 func (c *Cartridge) GetByte(address uint16) byte {
 	if address < 0x2000 {
-		return c.rom.GetByte(uint32(c.rom.GetPrgRomSize())*0x4000 + c.mapper.MapChrRom(address))
+		return c.rom.GetByte(c.chrRomOffset + c.mapper.MapChrRom(address))
 	} else {
 		return c.rom.GetByte(c.mapper.MapPrgRom(address))
 	}

@@ -124,7 +124,7 @@ func (g *Noise) isRandom() bool {
 }
 
 func (g *Noise) getTimerIndex() byte {
-	return g.registers[2] & ((1 << 4) - 1)
+	return g.registers[2] & 0xF
 }
 
 func (g *Noise) getLengthCounterIndex() byte {
@@ -136,5 +136,5 @@ func (g *Noise) isDisabledEnvelope() bool {
 }
 
 func (g *Noise) getEnvelopePeriod() byte {
-	return g.registers[0] & ((1 << 4) - 1)
+	return g.registers[0] & 0xF
 }

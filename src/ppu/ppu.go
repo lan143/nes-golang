@@ -8,5 +8,5 @@ import (
 
 type PPU interface {
 	Init(cartridge *cartridge.Cartridge, display display.Display, cpuRam *ram.Ram)
-	Run()
+	RunCycle()
 }

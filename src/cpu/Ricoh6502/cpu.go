@@ -82,7 +82,7 @@ func (c *Cpu) Reset() {
 	c.interruptHandler = Reset
 }
 
-func (c *Cpu) Run() {
+func (c *Cpu) RunCycle() {
 	if c.skipCycles > 0 {
 		c.skipCycles--
 		return

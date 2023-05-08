@@ -1,8 +1,9 @@
 package display
 
+import "context"
+
 type Display interface {
 	Init()
-	Run()
-	UpdateScreen()
+	Run(ctx context.Context)
 	RenderPixel(x, y uint16, color uint32)
 }

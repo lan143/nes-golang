@@ -13,6 +13,7 @@ type Factory struct {
 
 func (f *Factory) GetDisplay() Display {
 	return pixelgl.NewDisplay(f.config, f.bus)
+	//return none.NewDisplay()
 }
 
 func NewFactory(bus *bus.Bus, config *config.Config) *Factory {
