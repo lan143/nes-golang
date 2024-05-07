@@ -1,6 +1,8 @@
 package generators
 
-import "main/src/bus"
+import (
+	"main/src/bus"
+)
 
 type DMC struct {
 	enabled bool
@@ -38,6 +40,10 @@ func (g *DMC) Init() {
 }
 
 func (g *DMC) DriveTimer() {
+	if !g.enabled {
+		return
+	}
+
 	if g.timerCounter > 0 {
 		g.timerCounter--
 	} else {
