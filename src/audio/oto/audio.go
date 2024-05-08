@@ -3,6 +3,7 @@ package oto
 import (
 	"github.com/hajimehoshi/oto"
 	"log"
+	"main/src/audio/filter"
 )
 
 const (
@@ -14,10 +15,16 @@ type Audio struct {
 	player *oto.Player
 
 	playChan chan byte
+
+	f1, f2 *filter.HighPassFilter
+	f3     *filter.LowPassFilter
 }
 
 func (a *Audio) Init() error {
 	a.playChan = make(chan byte, AudioBufferSize)
+	a.f1 = filter.NewHighPassFilter(90, a.GetSampleRate())
+	a.f2 = filter.NewHighPassFilter(440, a.GetSampleRate())
+	a.f3 = filter.NewLowPassFilter(14000, a.GetSampleRate())
 
 	go a.playInDevice()
 
@@ -29,9 +36,11 @@ func (a *Audio) GetSampleRate() uint32 {
 }
 
 func (a *Audio) PlaySample(sample float32) {
-	if len(a.playChan) < AudioBufferSize {
-		a.playChan <- byte(sample * ((1 << 7) - 1))
-	}
+	sample = a.f1.Filter(sample)
+	sample = a.f2.Filter(sample)
+	sample = a.f3.Filter(sample)
+
+	a.playChan <- byte(sample * ((1 << 7) - 1))
 }
 
 func (a *Audio) playInDevice() {
