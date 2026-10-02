@@ -20,6 +20,15 @@ import (
 	"runtime/pprof"
 	"sync"
 	"syscall"
+	"time"
+)
+
+const (
+	ntscFPS  = 60.098
+	palFPS   = 50.007
+	dendyFPS = 49.766
+
+	ppuTicksPerFrame = 89342
 )
 
 type Nes struct {
@@ -87,7 +96,7 @@ func (n *Nes) Init(romName string) error {
 	case "Dendy":
 		n.videoSystem = enum.VideoSystemDendy
 	default:
-		return fmt.Errorf("unsupported video system %s", n.videoSystem)
+		return fmt.Errorf("unsupported video system %v", n.videoSystem)
 	}
 
 	n.bus.Init()
@@ -152,12 +161,17 @@ func (n *Nes) runInternal(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	var counter uint32
+	var ppuTicksInFrame int
 
-	cpuRunCycleChan := make(chan bool, 1)
-	ppuRunCycleChan := make(chan bool, 1)
-
-	go n.runCPU(cpuRunCycleChan)
-	go n.runPPU(ppuRunCycleChan)
+	fps := ntscFPS
+	switch n.videoSystem {
+	case enum.VideoSystemPAL:
+		fps = palFPS
+	case enum.VideoSystemDendy:
+		fps = dendyFPS
+	}
+	framePeriod := time.Duration(float64(time.Second) / fps)
+	frameDeadline := time.Now()
 
 	for {
 		select {
@@ -169,36 +183,37 @@ func (n *Nes) runInternal(ctx context.Context, wg *sync.WaitGroup) {
 
 		if n.videoSystem == enum.VideoSystemNTSC {
 			if counter%4 != 0 {
-				ppuRunCycleChan <- true
+				n.ppu.RunCycle()
+				ppuTicksInFrame++
 			} else {
-				cpuRunCycleChan <- true
+				n.cpu.RunCycle()
+				n.apu.RunCycle()
 			}
 		} else {
 			if counter%4 != 0 {
-				ppuRunCycleChan <- true
+				n.ppu.RunCycle()
+				ppuTicksInFrame++
 			} else {
-				cpuRunCycleChan <- true
+				n.cpu.RunCycle()
+				n.apu.RunCycle()
 			}
 
 			if counter%16 == 0 {
-				cpuRunCycleChan <- true
+				n.cpu.RunCycle()
+				n.apu.RunCycle()
 			}
 		}
-	}
-}
 
-func (n *Nes) runCPU(cpuRunCycleChan chan bool) {
-	for {
-		<-cpuRunCycleChan
-		n.cpu.RunCycle()
-		n.apu.RunCycle()
-	}
-}
+		if ppuTicksInFrame >= ppuTicksPerFrame {
+			ppuTicksInFrame = 0
 
-func (n *Nes) runPPU(ppuRunCycleChan chan bool) {
-	for {
-		<-ppuRunCycleChan
-		n.ppu.RunCycle()
+			frameDeadline = frameDeadline.Add(framePeriod)
+			if d := time.Until(frameDeadline); d > 0 {
+				time.Sleep(d)
+			} else if d < -framePeriod {
+				frameDeadline = time.Now()
+			}
+		}
 	}
 }
 
