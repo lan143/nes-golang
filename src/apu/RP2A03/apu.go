@@ -136,8 +136,6 @@ func (a *APU) Init(sampleRate uint32, audio audio.Audio) {
 		a.triangle.SetEnabled(a.status.IsEnabledTriangle())
 		a.noise.SetEnabled(a.status.IsEnabledNoise())
 		a.dmc.SetEnabled(a.status.IsEnabledDMC())
-
-		a.dmcIrqActive = true
 	})
 
 	a.b.OnCPUWrite(0x4017, func(value byte) {
@@ -180,6 +178,7 @@ func (a *APU) Init(sampleRate uint32, audio audio.Audio) {
 		}
 
 		a.frameIrqActive = false
+		a.dmcIrqActive = false
 
 		return value
 	})

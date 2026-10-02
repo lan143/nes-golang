@@ -15,6 +15,7 @@ type Mapper struct {
 	irqCounter       byte
 	irqCounterReload bool
 	irqEnabled       bool
+	irqPendingAck    bool
 
 	prgRomSize byte
 
@@ -23,21 +24,28 @@ type Mapper struct {
 
 func (m *Mapper) Init(prgRomSize byte) error {
 	m.prgRomSize = prgRomSize
-	m.irqEnabled = true
+	// MMC3 IRQs are disabled at power-on.
+	m.irqEnabled = false
 
 	m.bus.OnPPUScanline(func() {
-		if m.irqCounterReload {
+		// The counter runs regardless of the enable bit. A12 rising edges are
+		// approximated by the existing per-scanline hook.
+		if m.irqCounterReload || m.irqCounter == 0 {
 			m.irqCounter = m.irqLatchRegister
 			m.irqCounterReload = false
-		} else if m.irqEnabled {
-			if m.irqCounter > 0 {
-				m.irqCounter--
+		} else {
+			m.irqCounter--
+		}
 
-				if m.irqCounter == 0 {
-					m.bus.Interrupt(bus.IRQ)
-					m.irqCounterReload = true
-				}
-			}
+		// A non-zero counter clears the pending-ack latch so the next
+		// zero-crossing asserts the IRQ again.
+		if m.irqCounter != 0 {
+			m.irqPendingAck = false
+		}
+
+		if m.irqCounter == 0 && m.irqEnabled && !m.irqPendingAck {
+			m.bus.Interrupt(bus.IRQ)
+			m.irqPendingAck = true
 		}
 	})
 
@@ -127,7 +135,7 @@ func (m *Mapper) PutByte(address uint16, value byte) {
 		if address&0x01 == 0 {
 			m.bankSelectRegister = value
 		} else {
-			registerNumber := m.bankSelectRegister & ((1 << 3) - 1)
+			registerNumber := m.bankSelectRegister & 0x7
 
 			if registerNumber == 0 || registerNumber == 1 {
 				value &= 0xFE
@@ -139,21 +147,29 @@ func (m *Mapper) PutByte(address uint16, value byte) {
 				m.programRegisters[registerNumber-6] = value & 0x3F
 			}
 		}
-	} else if address >= 0xA000 && address < 0xC000 && address&0x01 == 0 {
-		m.mirroringRegister = value
+	} else if address >= 0xA000 && address < 0xC000 {
+		if address&0x01 == 0 {
+			m.mirroringRegister = value
+		}
+		// $A001 (PRG RAM protect) is not modeled and must not touch IRQ state.
 	} else if address >= 0xC000 && address < 0xE000 {
 		if address&0x01 == 0 {
+			// $C000-$DFFE even: IRQ latch write only, never arms a reload.
 			m.irqLatchRegister = value
+		} else {
+			// $C001-$DFFF odd: arm the reload.
+			m.irqCounterReload = true
 		}
-
-		m.irqCounterReload = true
-	} else {
+	} else if address >= 0xE000 {
 		if address&0x01 == 0 {
 			m.irqEnabled = false
+			m.irqPendingAck = false
 		} else {
 			m.irqEnabled = true
+			m.irqPendingAck = false
 		}
 	}
+	// Addresses below $8000 are ignored and must not affect IRQ state.
 }
 
 func NewMapper(bus *bus.Bus) *Mapper {

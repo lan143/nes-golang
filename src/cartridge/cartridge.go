@@ -15,6 +15,8 @@ type Cartridge struct {
 	mapperFactory *mapper.Factory
 
 	chrRomOffset     uint32
+	prgRomSizeBytes  uint32
+	chrRomSizeBytes  uint32
 	romMirroringType enum.MirroringType
 	hasChrRom        bool
 }
@@ -27,7 +29,9 @@ func (c *Cartridge) LoadRom(r rom.Rom) error {
 	log.Printf("PRG ROM Size: %d", c.rom.GetPrgRomSize())
 	log.Printf("CHR ROM Size: %d", c.rom.GetChrRomSize())
 
-	c.chrRomOffset = uint32(c.rom.GetPrgRomSize()) * 0x4000
+	c.prgRomSizeBytes = uint32(c.rom.GetPrgRomSize()) * 0x4000
+	c.chrRomSizeBytes = uint32(c.rom.GetChrRomSize()) * 0x2000
+	c.chrRomOffset = c.prgRomSizeBytes
 	c.romMirroringType = c.rom.GetMirroringType()
 	c.hasChrRom = c.rom.GetChrRomSize() > 0
 
@@ -58,10 +62,22 @@ func (c *Cartridge) GetMirroringType() enum.MirroringType {
 
 func (c *Cartridge) GetByte(address uint16) byte {
 	if address < 0x2000 {
-		return c.rom.GetByte(c.chrRomOffset + c.mapper.MapChrRom(address))
-	} else {
-		return c.rom.GetByte(c.mapper.MapPrgRom(address))
+		mapped := c.mapper.MapChrRom(address)
+		// Mapper bank registers may exceed the actual ROM in corner cases;
+		// real hardware aliases, so keep the index in bounds.
+		if c.chrRomSizeBytes > 0 {
+			mapped %= c.chrRomSizeBytes
+		}
+
+		return c.rom.GetByte(c.chrRomOffset + mapped)
 	}
+
+	mapped := c.mapper.MapPrgRom(address)
+	if c.prgRomSizeBytes > 0 {
+		mapped %= c.prgRomSizeBytes
+	}
+
+	return c.rom.GetByte(mapped)
 }
 
 func (c *Cartridge) PutByte(address uint16, value byte) {

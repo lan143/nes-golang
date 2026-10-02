@@ -89,8 +89,14 @@ func (c *Cpu) RunCycle() {
 	}
 
 	if c.hasInterrupt {
-		c.hasInterrupt = false
-		c.interrupt(c.interruptHandler)
+		if c.interruptHandler == IRQ && c.P.IsI() {
+			// IRQ is level-sensitive and stays pending while masked; do not
+			// swallow the latch. NMI/Reset are still consumed unconditionally.
+		} else {
+			handler := c.interruptHandler
+			c.hasInterrupt = false
+			c.interrupt(handler)
+		}
 	}
 
 	err := c.processCommand()

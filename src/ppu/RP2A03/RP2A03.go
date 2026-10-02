@@ -328,7 +328,7 @@ func (p *PPU) updateFlags() {
 		}
 	}
 
-	if p.cycle == 340 && p.scanline <= 240 && p.ppuMask.IsBackgroundVisible() && p.ppuMask.IsSpritesVisible() {
+	if p.cycle == 340 && p.scanline <= 240 && (p.ppuMask.IsBackgroundVisible() || p.ppuMask.IsSpritesVisible()) {
 		p.bus.DrivePPUScanline()
 	}
 }

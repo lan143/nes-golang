@@ -5,7 +5,8 @@ type Palette struct {
 }
 
 func (p *Palette) GetValue(index byte) uint32 {
-	return p.value[index]
+	// Palette RAM entries are 8-bit but rendering only uses bits 5-0.
+	return p.value[index&0x3F]
 }
 
 func (p *Palette) Init() {
