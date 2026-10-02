@@ -919,7 +919,7 @@ func (h *SBCHandler) Handle(cpu *Cpu, operand uint16, mode enums.Modes) error {
 	cpu.P.UpdateN(result)
 	cpu.P.UpdateZ(result)
 
-	if src1 >= src2+byteC {
+	if uint16(src1) >= uint16(src2)+uint16(byteC) {
 		cpu.P.SetC()
 	} else {
 		cpu.P.ClearC()
