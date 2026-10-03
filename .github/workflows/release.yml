@@ -88,14 +88,14 @@ jobs:
         with:
           go-version: "1.22"
       - name: Download llvm-mingw toolchain
-        run: curl -fL --retry 3 -o llvm-mingw.zip https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-x86_64.zip && unzip -q llvm-mingw.zip && rm llvm-mingw.zip
+        run: curl -fL --retry 3 -o llvm-mingw.tar.xz https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64.tar.xz && tar -xf llvm-mingw.tar.xz && rm llvm-mingw.tar.xz
       - name: Build
         env:
           CGO_ENABLED: "1"
           GOOS: windows
           GOARCH: arm64
           CC: aarch64-w64-mingw32-clang
-        run: PATH="$PWD/llvm-mingw-20240619-ucrt-x86_64/bin:$PATH" go build -o dist/nes-emu-windows-arm64.exe ./cmd/main.go
+        run: PATH="$PWD/llvm-mingw-20240619-ucrt-ubuntu-20.04-x86_64/bin:$PATH" go build -o dist/nes-emu-windows-arm64.exe ./cmd/main.go
       - uses: actions/upload-artifact@v4
         with:
           name: nes-emu-windows-arm64
