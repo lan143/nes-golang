@@ -133,13 +133,20 @@ jobs:
           pattern: nes-emu-*
           merge-multiple: true
           path: dist
-      # tag v0.1.<run_number>, auto-increments per release run; --prerelease
-      # is removable if stable releases are desired. If the release already
-      # exists from a previous run, fall back to re-uploading assets (clobber).
+      # tag v0.1.<run_number>, auto-increments per release run; --prerelease is
+      # removable if stable releases are desired. If the release already exists
+      # (e.g. a re-run of this job), re-upload assets with --clobber instead.
+      # GH_REPO is required because this job has no checkout (gh cannot infer
+      # the repository from GITHUB_ACTIONS/GITHUB_REPOSITORY alone).
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           TAG="v0.1.${{ github.run_number }}"
-          gh release create "$TAG" --target "${{ github.sha }}" --title "$TAG" --prerelease --generate-notes dist/nes-emu-* \
-            || gh release upload "$TAG" dist/nes-emu-* --clobber
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # release already exists (e.g. re-run of this job): re-attach assets
+            gh release upload "$TAG" dist/nes-emu-* --clobber
+          else
+            gh release create "$TAG" --target "${{ github.sha }}" --title "$TAG" --prerelease --generate-notes dist/nes-emu-*
+          fi
