@@ -1,0 +1,145 @@
+# Release pipeline for the NES emulator.
+# On every push to main (and on manual dispatch) it cross-builds the emulator
+# for five targets, then publishes a pre-release tagged v0.1.<run_number> with
+# all binaries attached. Tags auto-increment per workflow run so they never
+# collide with the existing v0.1.0 tag.
+name: release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build-linux-amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1-mesa-dev xorg-dev libasound2-dev pkg-config
+      - name: Build
+        env:
+          CGO_ENABLED: "1"
+        run: go build -o dist/nes-emu-linux-amd64 ./cmd/main.go
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nes-emu-linux-amd64
+          path: dist/
+          if-no-files-found: error
+
+  build-linux-arm64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - uses: docker/setup-qemu-action@v3
+      - name: Build inside native arm64 container
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: |
+          docker run --rm --platform linux/arm64 -v "$GITHUB_WORKSPACE":/src -w /src golang:1.22-bookworm bash -c 'apt-get update && apt-get install -y --no-install-recommends ca-certificates gcc pkg-config libgl1-mesa-dev xorg-dev libasound2-dev && CGO_ENABLED=1 go build -o dist/nes-emu-linux-arm64 ./cmd/main.go'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nes-emu-linux-arm64
+          path: dist/
+          if-no-files-found: error
+
+  build-windows-amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Install mingw-w64
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mingw-w64
+      - name: Build
+        env:
+          CGO_ENABLED: "1"
+          GOOS: windows
+          GOARCH: amd64
+          CC: x86_64-w64-mingw32-gcc
+        run: go build -o dist/nes-emu-windows-amd64.exe ./cmd/main.go
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nes-emu-windows-amd64
+          path: dist/
+          if-no-files-found: error
+
+  build-windows-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Download llvm-mingw toolchain
+        run: curl -fL --retry 3 -o llvm-mingw.zip https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-x86_64.zip && unzip -q llvm-mingw.zip && rm llvm-mingw.zip
+      - name: Build
+        env:
+          CGO_ENABLED: "1"
+          GOOS: windows
+          GOARCH: arm64
+          CC: aarch64-w64-mingw32-clang
+        run: PATH="$PWD/llvm-mingw-20240619-ucrt-x86_64/bin:$PATH" go build -o dist/nes-emu-windows-arm64.exe ./cmd/main.go
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nes-emu-windows-arm64
+          path: dist/
+          if-no-files-found: error
+
+  build-macos-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Build
+        env:
+          CGO_ENABLED: "1"
+        run: go build -o dist/nes-emu-macos-arm64 ./cmd/main.go
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nes-emu-macos-arm64
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    needs:
+      - build-linux-amd64
+      - build-linux-arm64
+      - build-windows-amd64
+      - build-windows-arm64
+      - build-macos-arm64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nes-emu-*
+          merge-multiple: true
+          path: dist
+      # tag v0.1.<run_number>, auto-increments per release run; --prerelease
+      # is removable if stable releases are desired. If the release already
+      # exists from a previous run, fall back to re-uploading assets (clobber).
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v0.1.${{ github.run_number }}"
+          gh release create "$TAG" --target "${{ github.sha }}" --title "$TAG" --prerelease --generate-notes dist/nes-emu-* \
+            || gh release upload "$TAG" dist/nes-emu-* --clobber
