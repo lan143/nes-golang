@@ -26,7 +26,8 @@ type Display struct {
 	coeff           int
 	resizeLock      sync.Mutex
 	resizeBuffer    []uint8
-	pixelBuffer     []uint32
+	backBuffer      []uint32
+	frontBuffer     []uint32
 	currentWinSizeX float64
 	currentWinSizeY float64
 
@@ -40,7 +41,8 @@ func (d *Display) Init() {
 	d.currentWinSizeX = NesImageSizeX
 	d.currentWinSizeY = NesImageSizeY
 	d.resizeBuffer = make([]uint8, (d.coeff*NesImageSizeX)*(d.coeff*NesImageSizeY)*4)
-	d.pixelBuffer = make([]uint32, NesImageSizeX*NesImageSizeY)
+	d.backBuffer = make([]uint32, NesImageSizeX*NesImageSizeY)
+	d.frontBuffer = make([]uint32, NesImageSizeX*NesImageSizeY)
 
 	d.initInput()
 }
@@ -52,7 +54,13 @@ func (d *Display) Run(ctx context.Context) {
 
 func (d *Display) RenderPixel(x, y uint16, color uint32) {
 	y = NesImageSizeY - 1 - y
-	d.pixelBuffer[y*NesImageSizeX+x] = color
+	d.backBuffer[y*NesImageSizeX+x] = color
+}
+
+func (d *Display) RenderFrame() {
+	d.resizeLock.Lock()
+	copy(d.frontBuffer, d.backBuffer)
+	d.resizeLock.Unlock()
 }
 
 func (d *Display) runInternal() {
@@ -96,7 +104,7 @@ func (d *Display) resizeFrame() {
 	d.resizeLock.Lock()
 	for y := 0; y < NesImageSizeY; y++ {
 		for x := 0; x < NesImageSizeX; x++ {
-			c = d.pixelBuffer[y*NesImageSizeX+x]
+			c = d.frontBuffer[y*NesImageSizeX+x]
 
 			for i := 0; i < d.coeff; i++ {
 				for j := 0; j < d.coeff; j++ {

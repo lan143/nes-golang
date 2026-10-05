@@ -242,6 +242,7 @@ func (p *PPU) countUpCycle() {
 		if p.scanline > 261 {
 			p.scanline = 0
 			p.frame++
+			p.display.RenderFrame()
 		}
 	}
 }

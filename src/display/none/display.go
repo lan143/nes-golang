@@ -26,3 +26,6 @@ func (d *Display) Run(ctx context.Context) {
 
 func (d *Display) RenderPixel(x, y uint16, color uint32) {
 }
+
+func (d *Display) RenderFrame() {
+}

@@ -192,6 +192,7 @@ func (d *countingDisplay) RenderPixel(x, y uint16, color uint32) {
 		d.frames.Add(1)
 	}
 }
+func (d *countingDisplay) RenderFrame() {}
 
 func TestSchedulerRealtimeSpeed(t *testing.T) {
 	if raceEnabled {
